@@ -1,0 +1,134 @@
+# Architecture Map
+
+## Project Overview
+
+AppDistillery Platform is a **modular monolith SaaS** built with Turborepo. It provides AI-powered tools for consultancies, starting with scope generation and proposal drafting.
+
+**Tech Stack:** Next.js 15 + React 19 + Supabase + Vercel AI SDK + TailwindCSS 4
+
+## Repository Structure
+
+```
+appdistillery-platform/
+├── apps/
+│   └── web/                    # Next.js 15 application (App Router)
+├── packages/
+│   ├── core/                   # Kernel: auth, brain, ledger, modules
+│   ├── database/               # Migrations + generated Supabase types
+│   └── ui/                     # Shared shadcn/ui components
+├── modules/
+│   └── agency/                 # First module: Consultancy tool
+├── docs/
+│   └── PROJECT_PLAN.md         # Master specification (~1200 lines)
+├── supabase/                   # Supabase config + migrations
+├── .claude/                    # AI context + commands + skills
+├── turbo.json                  # Turborepo pipeline config
+└── pnpm-workspace.yaml         # Workspace definition
+```
+
+## Core Kernel Services
+
+The `@appdistillery/core` package exports four distinct services:
+
+### 1. Auth (`@appdistillery/core/auth`)
+- User profiles and organizations
+- Memberships with roles (owner, admin, member)
+- Session context management
+- RLS policy enforcement helpers
+
+### 2. Brain (`@appdistillery/core/brain`)
+- AI router - single entry point for all LLM calls
+- `brainHandle(task, input)` - returns structured output
+- Uses Vercel AI SDK `generateObject()` with Zod schemas
+- Provider: Anthropic Claude (via @ai-sdk/anthropic)
+
+### 3. Ledger (`@appdistillery/core/ledger`)
+- Usage tracking via append-only `usage_events` table
+- `recordUsage(action, tokens, cost)` - tracks all billable operations
+- Brain Units (BU) as internal currency
+- Query helpers: `getUsageHistory()`, `getUsageSummary()`
+
+### 4. Modules (`@appdistillery/core/modules`)
+- Module registry and manifest system
+- Installation management per organization
+- `canAccessModule(orgId, moduleId)` permission check
+- Dynamic route discovery
+
+## Module Structure Pattern
+
+Each module follows this structure:
+
+```
+modules/<name>/
+├── src/
+│   ├── manifest.ts           # Module definition (routes, actions, artifacts)
+│   ├── prompts.ts            # AI prompt templates
+│   ├── schemas/              # Zod schemas for validation
+│   │   ├── intake.ts
+│   │   ├── brief.ts
+│   │   └── index.ts
+│   ├── actions/              # Server Actions
+│   │   ├── leads.ts
+│   │   ├── briefs.ts
+│   │   └── index.ts
+│   └── components/           # Module-specific UI
+└── package.json
+```
+
+## Data Flow
+
+```
+UI Form → Server Action → brainHandle() → AI Response → recordUsage() → Supabase
+```
+
+1. User submits form data
+2. Server Action validates with Zod schema
+3. `brainHandle()` sends to AI with structured output schema
+4. AI response validated against schema
+5. `recordUsage()` records tokens/cost
+6. Data saved to Supabase with org_id
+
+## Tenant Isolation
+
+**Critical:** All queries MUST include `org_id` filter.
+
+- Database: RLS policies enforce org isolation
+- Application: `getSessionContext()` provides current org_id
+- Verification: All table operations must filter by org_id
+- UI: Only shows data for current organization
+
+## Existing Functionality
+
+### Agency Module (`modules/agency/`)
+
+**Purpose:** AI-powered consultancy proposal tool
+
+**Features:**
+- Lead intake form (client info, challenge description)
+- Scope generation (AI suggests deliverables, timeline)
+- Proposal drafting (AI generates client-ready proposal)
+
+**Tables:**
+- `agency_leads` - Client information
+- `agency_briefs` - Processed lead → brief
+- `agency_proposals` - Generated proposals
+
+**Usage Actions:**
+- `agency:scope:generate` (50 BU)
+- `agency:proposal:draft` (100 BU)
+
+## Package Boundaries
+
+**Import Rules:**
+
+| From | Can Import |
+|------|------------|
+| `apps/web` | `@appdistillery/*`, `modules/*` |
+| `packages/core` | `@appdistillery/database` |
+| `packages/ui` | Nothing (standalone) |
+| `modules/*` | `@appdistillery/*` (not other modules) |
+
+**Cross-Module Communication:**
+- Modules CANNOT import from each other directly
+- Use Core services for shared functionality
+- Future: Event bus for module communication
