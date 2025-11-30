@@ -187,7 +187,21 @@ supabase db push
 
 ### 3.1 Identity & Tenancy
 
-**Purpose:** Multi-tenant user and organization management with strict isolation.
+**Purpose:** Multi-tenant user and account management with strict isolation supporting three account types.
+
+#### Account Types
+
+| Type | Description | Usage Pool |
+|------|-------------|------------|
+| **Personal** | Individual user, email only | Per-user |
+| **Household** | Shared group (family/friends) | Shared pool |
+| **Organization** | Business with org numbers | Shared pool |
+
+**Key Design Decisions:**
+- Personal users can use the platform without creating a tenant
+- Personal users can later create or join Households/Organizations
+- Tenants (Households + Organizations) share usage pools
+- RLS policies support both personal (user_id) and tenant (tenant_id) isolation
 
 **Tables:**
 
@@ -196,42 +210,57 @@ supabase db push
 CREATE TABLE public.user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT,
+  email TEXT NOT NULL,
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Organizations (tenants)
-CREATE TABLE public.organizations (
+-- Tenants (households + organizations)
+CREATE TABLE public.tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL CHECK (type IN ('household', 'organization')),
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
+  -- Organization-specific fields (null for households)
+  org_number TEXT,        -- Business registration number
+  billing_email TEXT,
   settings JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Memberships (user <-> org relationship)
-CREATE TABLE public.memberships (
+-- Tenant members (user <-> tenant relationship)
+CREATE TABLE public.tenant_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE,
   user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
-  org_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
   joined_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (user_id, org_id)
+  UNIQUE(tenant_id, user_id)
 );
 
--- RLS Policies
-ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.memberships ENABLE ROW LEVEL SECURITY;
+-- Indexes
+CREATE INDEX idx_tenant_members_user ON public.tenant_members(user_id);
+CREATE INDEX idx_tenant_members_tenant ON public.tenant_members(tenant_id);
 
--- Users can see orgs they belong to
-CREATE POLICY "Users can view their orgs" ON public.organizations
+-- RLS Policies
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_members ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own profile
+CREATE POLICY "Users can view own profile" ON public.user_profiles
+  FOR SELECT USING (id = auth.uid());
+
+-- Users can see tenants they belong to
+CREATE POLICY "Users can view their tenants" ON public.tenants
   FOR SELECT USING (
-    id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid())
+    id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid())
   );
 
 -- Users can see their own memberships
-CREATE POLICY "Users can view their memberships" ON public.memberships
+CREATE POLICY "Users can view their memberships" ON public.tenant_members
   FOR SELECT USING (user_id = auth.uid());
 ```
 
@@ -239,32 +268,38 @@ CREATE POLICY "Users can view their memberships" ON public.memberships
 
 ```typescript
 // packages/core/auth/types.ts
+export type TenantType = 'household' | 'organization';
+
 export interface UserProfile {
   id: string;
   displayName: string | null;
+  email: string;
   avatarUrl: string | null;
   createdAt: Date;
 }
 
-export interface Organization {
+export interface Tenant {
   id: string;
+  type: TenantType;
   name: string;
   slug: string;
+  orgNumber: string | null;    // Only for organizations
+  billingEmail: string | null;
   settings: Record<string, unknown>;
   createdAt: Date;
 }
 
-export interface Membership {
+export interface TenantMember {
+  tenantId: string;
   userId: string;
-  orgId: string;
   role: 'owner' | 'admin' | 'member';
   joinedAt: Date;
 }
 
 export interface SessionContext {
   user: UserProfile;
-  org: Organization;
-  membership: Membership;
+  tenant?: Tenant;            // Optional - personal users may not have a tenant
+  membership?: TenantMember;  // Optional - only if in a tenant
 }
 ```
 
