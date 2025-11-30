@@ -1,5 +1,5 @@
 ---
-description: Execute a task with configurable workflow (quick or full) including planning, implementation, testing, and optional review/documentation
+description: Execute a task with agent orchestration - planning, implementation, review loops, and documentation
 argument-hint: <task-id-or-path> [--quick|--full] [extra-context]
 ---
 
@@ -7,37 +7,34 @@ argument-hint: <task-id-or-path> [--quick|--full] [extra-context]
 
 **Input:** $ARGUMENTS
 
+**CRITICAL**: You are the ORCHESTRATOR. You coordinate and delegate - you do NOT implement directly. All implementation work MUST be delegated to specialized agents.
+
 ---
 
-## Step 0: Parse Arguments
+## Phase 0: Parse Arguments
 
 Parse the input to extract:
-- **Task identifier**: Either a task ID (e.g., "001") or full path (e.g., "tasks/backlog/TASK-001-feature.md")
+- **Task identifier**: Task ID (e.g., "0-06") or full path (e.g., "tasks/backlog/TASK-0-06-feature.md")
 - **Workflow mode**: `--quick` or `--full` (default: auto-detect from complexity)
 - **Extra context**: Any additional instructions after the flags
 
 ```
 Examples:
-/execute-task 001                          → Auto mode, task ID
-/execute-task 001 --full                   → Full mode, task ID
-/execute-task tasks/backlog/TASK-001.md --quick
-/execute-task 002 --full Focus on error handling
+/execute-task 0-06                         → Auto mode, task ID
+/execute-task 1-01 --full                  → Full mode, task ID
+/execute-task 0-06 --quick Focus on mocks only
 ```
 
 ---
 
-## Phase 1: Load Task & Context
+## Phase 1: Load Task
 
 ### 1.1 Find Task File
 
-**If task ID provided (e.g., "001"):**
-1. Search `tasks/backlog/TASK-001-*.md`
-2. If not found, search `tasks/active/TASK-001-*.md`
+**If task ID provided (e.g., "0-06"):**
+1. Search `tasks/backlog/TASK-{id}-*.md`
+2. If not found, search `tasks/active/TASK-{id}-*.md`
 3. If not found → STOP with error "Task not found"
-
-**If full path provided:**
-1. Verify file exists at path
-2. If not found → STOP with error
 
 ### 1.2 Load Task Content
 
@@ -49,233 +46,277 @@ Read the task file and extract:
 - **Acceptance Criteria**: List of testable conditions
 - **Dependencies**: Blocked by / Blocks relationships
 
-### 1.3 Load Skills
-
-Load relevant skills based on task:
-```
-Skill("project-context")   # Always load
-Skill("code-quality")      # Always load
-```
-
-Additional skills based on task type:
-| Task Type | Skills to Load |
-|-----------|---------------|
-| UI/Components | `design-system`, `shadcn`, `tailwindcss` |
-| Database | `supabase` |
-| Testing | `testing` |
-| Next.js specific | `nextjs` |
-| AI features | `ai-llm-setup` |
-
-### 1.3a Agent Orchestration Strategy
-
-The main agent acts as **orchestrator**, delegating specialized work to agents in `.claude/agents/`.
-
-**Agent Selection by Task Type:**
-
-| Task Domain | Primary Agent | Support Agents |
-|-------------|---------------|----------------|
-| Backend/Server Actions | appdistillery-developer | test-engineer, database-architect |
-| Frontend/UI | ux-ui | test-engineer |
-| Database | database-architect | security-auditor |
-| Testing | test-engineer | appdistillery-developer |
-| Security-sensitive | security-auditor | appdistillery-developer |
-
-**Parallel Execution:**
-Launch independent agents in parallel (single message, multiple Task calls):
-- Implementation + Testing can run in parallel after planning
-- Multiple file explorations can run in parallel
-- Frontend + Backend when they don't depend on each other
-
-**Context Gathering:**
-Before implementation, use `Explore` agent to:
-- Find similar patterns in codebase
-- Identify files to modify
-- Understand existing implementations
-
-### 1.4 Determine Workflow Mode
+### 1.3 Determine Workflow Mode
 
 **Auto-detection (if no flag provided):**
 - Complexity 1-2 points → Quick mode
 - Complexity 3+ points → Full mode
 
 **Override with flags:**
-- `--quick` → Force quick mode
-- `--full` → Force full mode
+- `--quick` → Force quick mode (skip review loop)
+- `--full` → Force full mode (include review loop)
 
-### 1.5 Initialize Progress Tracking
+---
 
-**Quick Mode:**
+## Phase 2: Planning Decision (MANDATORY)
+
+### 2.1 Assess Planning Complexity
+
+Evaluate if the task requires strategic planning:
+
+**Delegate to `strategic-advisor` agent if ANY of these apply:**
+- Complexity 4-5 points
+- Touches multiple modules (cross-cutting)
+- Requires architecture decisions
+- Has unclear implementation approach
+- Involves trade-offs between approaches
+
+**Orchestrator plans directly if:**
+- Complexity 1-3 points
+- Single module scope
+- Clear implementation path from task file
+- Follows established patterns
+
+### 2.2 Execute Planning
+
+**If delegating to strategic-advisor:**
 ```
-TodoWrite([
-  { content: "Load task and plan", status: "in_progress" },
-  { content: "Implement changes", status: "pending" },
-  { content: "Test and verify", status: "pending" },
-  { content: "Commit and complete", status: "pending" }
-])
+Task(
+  subagent_type="strategic-advisor",
+  prompt="Analyze and plan TASK-XXX: [title]
+
+  Task file: [path]
+  Acceptance criteria: [list]
+
+  Provide:
+  1. Implementation approach
+  2. Step-by-step execution plan with:
+     - Which agent handles each step
+     - Sequential vs parallel execution mode
+     - Dependencies between steps
+  3. Review strategy
+  4. Risk assessment"
+)
 ```
 
-**Full Mode:**
-```
-TodoWrite([
-  { content: "Load task and plan", status: "in_progress" },
-  { content: "Implement changes", status: "pending" },
-  { content: "Test and verify", status: "pending" },
-  { content: "Review code quality", status: "pending" },
-  { content: "Update documentation", status: "pending" },
-  { content: "Commit and complete", status: "pending" }
-])
-```
+**If orchestrator plans directly:**
+Create the execution plan yourself following section 2.3.
 
-### 1.6 Present Plan & Get Approval
+### 2.3 Execution Plan Format (REQUIRED)
 
-Present execution plan:
+The plan MUST specify for each step:
+
 ```markdown
-## Task Execution Plan
+## Execution Plan: TASK-XXX
 
-**Task:** TASK-XXX - [Title]
-**Priority:** [Priority] | **Complexity:** [X] points
-**Module:** [Module]
-**Workflow:** [Quick/Full] mode
+### Implementation Steps
 
-### Acceptance Criteria
-[List from task file]
+| Step | Description | Agent | Mode | Depends On |
+|------|-------------|-------|------|------------|
+| 1 | [What to do] | [agent-name] | sequential | - |
+| 2 | [What to do] | [agent-name] | parallel | - |
+| 3 | [What to do] | [agent-name] | parallel | - |
+| 4 | [What to do] | [agent-name] | sequential | 2, 3 |
 
-### Implementation Approach
-[Brief description]
+### Review Strategy
 
-### Extra Context
-[Any additional instructions from $ARGUMENTS]
+| Review Type | Agent | Mode |
+|-------------|-------|------|
+| Code quality | code-reviewer | parallel |
+| Security | security-auditor | parallel |
+| Tests | test-engineer | parallel |
+
+### Agent Selection Rationale
+- Step 1: [agent] because [reason]
+- Step 2: [agent] because [reason]
 ```
 
-Use AskUserQuestion:
+**Agent Reference:**
+
+| Domain | Agent | Use For |
+|--------|-------|---------|
+| Backend/Core | `appdistillery-developer` | Server Actions, services, business logic |
+| Frontend/UI | `ux-ui` | Components, styling, accessibility |
+| Database | `database-architect` | Migrations, RLS, schema |
+| Testing | `test-engineer` | Test creation, test fixes |
+| Security | `security-auditor` | Security review, auth patterns |
+| Code Review | `code-reviewer` | Quality review, patterns |
+| Exploration | `Explore` | Find patterns, understand code |
+| Complex Planning | `strategic-advisor` | Architecture, trade-offs |
+
+### 2.4 Get Plan Approval
+
+Present the execution plan to user with AskUserQuestion:
 - "Approve - Start execution"
 - "Revise - Modify plan first"
 
 ---
 
-## Phase 2: Implementation
+## Phase 3: Implementation
 
-### 2.1 Move Task to Active
+### 3.1 Move Task to Active
 
 ```bash
 mv tasks/backlog/TASK-XXX-*.md tasks/active/
 ```
 
-Update task file status:
-```
-**Status:** IN_PROGRESS
-**Started:** [Today's date]
-```
-
-### 2.2 Implement Changes
-
-Follow these principles:
-1. **Read before write** - Understand existing code before modifying
-2. **Incremental changes** - Small, testable commits
-3. **Follow patterns** - Use existing project patterns
-4. **Type safety** - No `any`, use Zod for external data
-
-**Critical AppDistillery patterns:**
-- Use `brainHandle()` for AI calls (not direct provider)
-- Use `recordUsage()` for usage tracking
-- Include `org_id` in all tenant queries
-- Use Server Actions for mutations
-- Use Zod schemas for validation
-
-### 2.2a Delegate to Specialized Agents
-
-For complex implementations, delegate to specialized agents:
-
-**Backend work:**
-```
-Task(subagent_type="appdistillery-developer", prompt="Implement [feature]...")
+Update task file frontmatter:
+```yaml
+status: IN_PROGRESS
+started: [Today's date]
 ```
 
-**Frontend work:**
+### 3.2 Execute Steps Per Plan
+
+**CRITICAL: You MUST delegate to agents. Do NOT implement yourself.**
+
+**For sequential steps:**
+Execute one at a time, wait for completion before next.
+
 ```
-Task(subagent_type="ux-ui", prompt="Create component for [feature]...")
+Task(
+  subagent_type="[agent from plan]",
+  prompt="[Detailed implementation instructions]
+
+  Context:
+  - Task: TASK-XXX
+  - Step: [N] of [total]
+  - Acceptance criteria relevant to this step: [list]
+  - Files to modify: [list]
+  - Patterns to follow: [reference]
+
+  Return: Summary of changes made and any issues encountered."
+)
 ```
 
-**Parallel delegation (single message, multiple calls):**
+**For parallel steps:**
+Launch all parallel steps in a SINGLE message with multiple Task calls:
+
 ```
-Task(subagent_type="appdistillery-developer", prompt="Implement Server Action...")
-Task(subagent_type="ux-ui", prompt="Create form component...")
+Task(subagent_type="appdistillery-developer", prompt="Implement backend...")
+Task(subagent_type="ux-ui", prompt="Create component...")
+Task(subagent_type="test-engineer", prompt="Write tests...")
 ```
 
-See `.claude/INDEX.md` for full agent list and selection guide.
+### 3.3 Track Progress
 
-### 2.3 Track Progress
+Update TodoWrite after each step completes:
+```
+TodoWrite([
+  { content: "Step 1: [desc]", status: "completed" },
+  { content: "Step 2: [desc]", status: "in_progress" },
+  { content: "Step 3: [desc]", status: "pending" },
+  ...
+])
+```
 
-Update TodoWrite as you complete each step.
+### 3.4 Run Quality Checks
 
----
-
-## Phase 3: Testing
-
-### 3.1 Run Tests
-
+After implementation steps complete:
 ```bash
-pnpm test              # Unit tests
-pnpm lint              # ESLint
-pnpm typecheck         # TypeScript
-pnpm build             # Verify build
+pnpm test && pnpm typecheck && pnpm build
 ```
 
-### 3.2 Handle Failures
-
-If tests fail:
-1. Use `/debug` command to diagnose
-2. Fix issues
-3. Re-run tests
-
-### 3.3 Verify Acceptance Criteria
-
-Go through each acceptance criterion:
-- [ ] Criterion 1 - [Verified/Not verified]
-- [ ] Criterion 2 - [Verified/Not verified]
-
-If any criterion not met, return to Phase 2.
+If failures occur, proceed to Review Loop (Phase 4) to diagnose and fix.
 
 ---
 
-## Phase 4: Review (Full Mode Only)
+## Phase 4: Review Loop
 
-### 4.1 Code Review
+### 4.1 Launch Review Agents (PARALLEL)
 
-Use `/review` command on changed files:
+All review agents run in parallel in a SINGLE message:
+
 ```
-/review [changed files]
+Task(subagent_type="code-reviewer", prompt="Review changes for TASK-XXX...")
+Task(subagent_type="security-auditor", prompt="Security review for TASK-XXX...")
+Task(subagent_type="test-engineer", prompt="Verify test coverage for TASK-XXX...")
 ```
 
-Focus on:
-- TypeScript strictness
-- Architecture compliance
-- Tenant isolation
-- Security
-- Performance
+### 4.2 Collect Review Findings
 
-### 4.2 Address Findings
+Aggregate findings from all review agents:
+- **Critical**: Must fix before completion
+- **Warning**: Should fix or justify
+- **Suggestion**: Consider for improvement
 
-- Fix all Critical findings
-- Fix or justify Warning findings
-- Consider Suggestion findings
+### 4.3 Fix Loop (if findings exist)
 
-### 4.3 Re-run Tests
+**If Critical or Warning findings exist:**
 
-```bash
-pnpm test && pnpm lint && pnpm build
-```
+1. **Plan fixes** - Determine which agent(s) handle each finding:
+   ```markdown
+   | Finding | Severity | Fix Agent | Mode |
+   |---------|----------|-----------|------|
+   | [Issue 1] | Critical | appdistillery-developer | sequential |
+   | [Issue 2] | Warning | ux-ui | parallel |
+   | [Issue 3] | Warning | test-engineer | parallel |
+   ```
+
+2. **Execute fixes** - Delegate to appropriate agents (sequential/parallel per plan)
+
+3. **Re-run quality checks**:
+   ```bash
+   pnpm test && pnpm typecheck && pnpm build
+   ```
+
+4. **New review round** - Return to 4.1
+
+**Continue loop until:**
+- No Critical findings remain
+- All Warning findings fixed or justified
+- Quality checks pass
+
+### 4.4 Quick Mode Exception
+
+In `--quick` mode, skip the full review loop:
+- Run quality checks only (`pnpm test && pnpm typecheck && pnpm build`)
+- Fix any failures directly
+- Do not launch review agents
 
 ---
 
-## Phase 5: Documentation (Full Mode Only)
+## Phase 5: Documentation
 
-### 5.1 Update Documentation
+### 5.1 Document Changes
 
-If needed:
-- **ADR**: For architectural decisions, use `/adr [decision-title]`
-- **Code comments**: Add JSDoc for public APIs
-- **README**: Update if new features affect usage
+After review loop completes, update documentation:
+
+**Always update:**
+- Task file with completion status and summary
+- `tasks/INDEX.md` with updated counts
+
+**If architectural changes were made:**
+- Create ADR via `/adr [decision-title]`
+- Update `.claude/skills/project-context/references/architecture-map.md`
+
+**If dependencies changed:**
+- Update `.claude/skills/project-context/references/dependencies.md`
+
+**If new patterns established:**
+- Update `.claude/skills/project-context/references/module-patterns.md`
+
+### 5.2 Update Task File
+
+```yaml
+---
+status: COMPLETED
+completed: [Today's date]
+---
+
+## Progress Log
+
+| Date | Update |
+|------|--------|
+| [date] | Task created |
+| [date] | Completed: [summary of what was done] |
+```
+
+Mark all acceptance criteria as checked:
+```markdown
+- [x] Criterion 1
+- [x] Criterion 2
+```
 
 ---
 
@@ -287,17 +328,11 @@ If needed:
 mv tasks/active/TASK-XXX-*.md tasks/completed/
 ```
 
-Update task file:
-```
-**Status:** COMPLETED
-**Completed:** [Today's date]
-```
-
 ### 6.2 Update Task Index
 
 Update `tasks/INDEX.md`:
-- Update counts
-- Move task to "Recently Completed"
+- Move task from Backlog to Completed section
+- Update phase statistics
 
 ### 6.3 Commit Changes
 
@@ -308,6 +343,7 @@ feat(module): implement TASK-XXX description
 
 - [Key change 1]
 - [Key change 2]
+- [Key change 3]
 
 Acceptance criteria: all met
 
@@ -318,30 +354,43 @@ EOF
 )"
 ```
 
-### 6.4 Summary
+### 6.4 Completion Summary
 
 ```markdown
 ## Task Completed: TASK-XXX
 
 **Title:** [Task title]
 **Workflow:** [Quick/Full] mode
+**Planning:** [Orchestrator/Strategic-advisor]
+
+### Execution Summary
+| Step | Agent | Status |
+|------|-------|--------|
+| 1. [desc] | [agent] | Completed |
+| 2. [desc] | [agent] | Completed |
+
+### Review Rounds
+- Round 1: [N] findings → [N] fixed
+- Round 2: Clean (if applicable)
 
 ### What Was Accomplished
 [2-3 sentence summary]
 
-### Key Changes
-- [Bullet point changes]
-
 ### Quality Gates
 - [x] All tests passing
+- [x] TypeScript clean
 - [x] Build succeeds
-- [x] Lint clean
-[Full mode only:]
-- [x] Code review passed
-- [x] Documentation updated
+- [x] Code review passed (full mode)
+- [x] Security review passed (full mode)
 
 ### Files Changed
 [List of files]
+
+### Documentation Updated
+- [x] Task file completed
+- [x] INDEX.md updated
+- [ ] ADR created (if applicable)
+- [ ] Context docs updated (if applicable)
 
 ### Commit
 [Commit hash]
@@ -354,11 +403,11 @@ EOF
 If any phase fails:
 
 1. **STOP** - Do not proceed
-2. **Document** - Note failure point and error
-3. **Diagnose** - Use `/debug` if needed
+2. **Document** - Note failure point and error in task file
+3. **Diagnose** - Use `/debug [error]` if needed
 4. **Resolve**:
-   - Fixable → Fix and resume
-   - Needs clarification → Ask user
+   - Fixable → Plan fix with appropriate agent → Execute → Resume
+   - Needs clarification → AskUserQuestion
    - Blocker → Document and STOP
 
 **Never proceed past failure without resolution.**
@@ -367,15 +416,18 @@ If any phase fails:
 
 ## Quick Reference
 
-| Workflow | Phases | When to Use |
-|----------|--------|-------------|
-| Quick | Plan → Implement → Test → Commit | 1-2 point tasks |
-| Full | Plan → Implement → Test → Review → Docs → Commit | 3+ point tasks |
+| Phase | Quick Mode | Full Mode |
+|-------|------------|-----------|
+| 1. Load Task | Yes | Yes |
+| 2. Planning | Yes | Yes (may use strategic-advisor) |
+| 3. Implementation | Agent delegation | Agent delegation |
+| 4. Review Loop | Quality checks only | Full review agents + fix loop |
+| 5. Documentation | Task file only | Task + context docs |
+| 6. Completion | Yes | Yes |
 
-| Task Type | Key Skills |
-|-----------|-----------|
-| UI Components | `design-system`, `shadcn`, `tailwindcss` |
-| Server Actions | `code-quality`, `supabase` |
-| Database | `supabase` |
-| Testing | `testing` |
-| AI Features | `ai-llm-setup` |
+| Execution Mode | When to Use |
+|----------------|-------------|
+| Sequential | Steps depend on each other |
+| Parallel | Steps are independent |
+
+**Remember: You are the ORCHESTRATOR. Agents IMPLEMENT. Never skip delegation.**

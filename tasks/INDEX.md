@@ -6,8 +6,8 @@
 
 | Phase | Status | Count |
 |-------|--------|-------|
-| Phase 0 | Completed | 7 |
-| Phase 0 | Backlog | 2 |
+| Phase 0 | Completed | 8 |
+| Phase 0 | Backlog | 1 |
 | Phase 1 | Backlog | 17 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
@@ -28,6 +28,7 @@
 | [TASK-0-03](completed/TASK-0-03-tailwind-v4.md) | Tailwind CSS v4 integration | 2 |
 | [TASK-0-04](completed/TASK-0-04-supabase-local.md) | Supabase local development | 2 |
 | [TASK-0-05](completed/TASK-0-05-shadcn-config.md) | shadcn/ui configuration | 2 |
+| [TASK-0-06](completed/TASK-0-06-vitest-setup.md) | Vitest testing setup | 2 |
 | [TASK-0-08](completed/TASK-0-08-claude-context.md) | Claude Code context setup | 3 |
 | [TASK-0-09](completed/TASK-0-09-adr-structure.md) | ADR documentation structure | 1 |
 
@@ -35,7 +36,6 @@
 
 | ID | Title | Priority | Complexity |
 |----|-------|----------|------------|
-| [TASK-0-06](backlog/TASK-0-06-vitest-setup.md) | Vitest testing setup | P1-High | 2 |
 | [TASK-0-07](backlog/TASK-0-07-sentry-monitoring.md) | Sentry error monitoring | P2-Medium | 2 |
 
 ---

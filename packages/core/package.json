@@ -17,13 +17,14 @@
     "clean": "rm -rf .turbo"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
     "@supabase/supabase-js": "^2.49.0",
     "ai": "^4.3.0",
-    "@ai-sdk/anthropic": "^1.2.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.14",
     "typescript": "^5.8.0",
-    "vitest": "^3.2.0"
+    "vitest": "^4.0.14"
   }
 }

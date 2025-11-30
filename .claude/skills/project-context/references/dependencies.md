@@ -79,7 +79,8 @@
 | @ai-sdk/anthropic | ^1.2.0 | Anthropic provider |
 | @supabase/supabase-js | ^2.49.0 | Supabase client |
 | zod | ^3.24.0 | Schema validation |
-| vitest | ^3.2.0 | Testing framework |
+| vitest | ^4.0.14 | Testing framework |
+| @vitest/coverage-v8 | ^4.0.14 | Coverage provider |
 
 ## @appdistillery/database
 
@@ -97,6 +98,16 @@
 
 **Peer Dependencies:**
 - react ^19.0.0
+
+## @appdistillery/agency (Module)
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| @appdistillery/core | workspace:* | Core services |
+| @appdistillery/database | workspace:* | Database types |
+| zod | ^3.24.0 | Schema validation |
+| vitest | ^4.0.14 | Testing framework |
+| @vitest/coverage-v8 | ^4.0.14 | Coverage provider |
 
 ## Packages to Avoid
 

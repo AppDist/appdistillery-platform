@@ -4,8 +4,9 @@ title: Vitest testing setup
 priority: P1-High
 complexity: 2
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+completed: 2024-11-30
 ---
 
 # TASK-0-06: Vitest testing setup
@@ -16,12 +17,12 @@ Complete Vitest configuration with config files, test utilities, and initial tes
 
 ## Acceptance Criteria
 
-- [ ] vitest.config.ts in packages/core/
-- [ ] vitest.config.ts in modules/agency/
-- [ ] Test utilities (mocks, fixtures) created
-- [ ] Sample test file demonstrating patterns
-- [ ] `pnpm test` runs successfully
-- [ ] Coverage configuration enabled
+- [x] vitest.config.ts in packages/core/
+- [x] vitest.config.ts in modules/agency/
+- [x] Test utilities (mocks, fixtures) created
+- [x] Sample test file demonstrating patterns
+- [x] `pnpm test` runs successfully
+- [x] Coverage configuration enabled
 
 ## Technical Notes
 
@@ -79,3 +80,4 @@ export default defineConfig({
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2024-11-30 | Completed: Vitest v4.0.14 configured with coverage, mocks, and sample tests |
