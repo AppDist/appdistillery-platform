@@ -11,76 +11,110 @@ argument-hint: [migration-file] (optional - reviews all pending if omitted)
 
 ## Instructions
 
-You are invoking the seraphae-migrator agent to review migrations for issues.
+You are reviewing database migrations for the AppDistillery Platform.
 
-### Step 1: Identify Migrations
+### Step 1: Load Context
+
+Load the supabase skill:
+```
+Skill("supabase")
+```
+
+### Step 2: Identify Migrations
 
 If `$ARGUMENTS` specifies a file, review that migration.
-If empty, review all migrations in `supabase/migrations/`.
+If empty, review all migrations in `packages/database/supabase/migrations/`.
 
-### Step 2: Launch Migrator Agent
-
-Use the Task tool to invoke seraphae-migrator:
-
+```bash
+ls -la packages/database/supabase/migrations/
 ```
-Task({
-  subagent_type: "seraphae-migrator",
-  prompt: `Review migrations for issues: ${ARGUMENTS || 'all in supabase/migrations/'}
 
-## Migration Review Checklist
+### Step 3: Review Checklist
 
-### Safety
+#### Safety
 - [ ] No destructive operations without explicit warning (DROP, TRUNCATE)
 - [ ] Data migrations handle NULL values
 - [ ] Foreign key constraints don't break existing data
 - [ ] Indexes don't lock large tables for too long
 
-### RLS
+#### Tenant Isolation
+- [ ] All tenant tables have `org_id` column
+- [ ] `org_id` references `organizations(id)` with ON DELETE CASCADE
 - [ ] RLS enabled on ALL new tables
-- [ ] Policies use correct identity pattern (shopify_customer_id, not auth.uid())
-- [ ] Subquery wrapper on current_setting() calls
-- [ ] No USING (true) without role restriction
-- [ ] Coverage for SELECT, INSERT, UPDATE, DELETE as appropriate
+- [ ] Tenant policies use `org_id = (auth.jwt()->>'org_id')::uuid`
+- [ ] Service role bypass policy exists
 
-### Indexes
+#### RLS Policy Coverage
+- [ ] SELECT policy for reads
+- [ ] INSERT policy with WITH CHECK
+- [ ] UPDATE policy for modifications
+- [ ] DELETE policy if deletions allowed
+- [ ] No `USING (true)` without role restriction
+
+#### Indexes
+- [ ] `org_id` column has index
 - [ ] Foreign key columns have indexes
-- [ ] Columns used in RLS policies have indexes
 - [ ] Columns in frequent WHERE clauses indexed
 - [ ] No duplicate indexes
 
-### Naming
-- [ ] Migration filename follows YYYYMMDDHHMMSS_description.sql
-- [ ] Table names are snake_case, plural
-- [ ] Index names follow idx_table_column pattern
+#### Naming
+- [ ] Migration filename follows `YYYYMMDDHHMMSS_description.sql`
+- [ ] Core tables: `public.<entity>`
+- [ ] Module tables: `public.<module>_<entity>`
+- [ ] Index names follow `idx_table_column` pattern
 
-### Phase Appropriateness
-- [ ] Tables/columns match current project phase
-- [ ] No Phase 2/3 features unless explicitly requested
+#### Data Types
+- [ ] Use `TIMESTAMPTZ` (not TIMESTAMP)
+- [ ] Use `UUID` for IDs
+- [ ] Use `TEXT` appropriately (or VARCHAR with limit)
+- [ ] Use `NUMERIC` for money (not FLOAT)
 
-### Common Issues to Flag
-- Missing NOT NULL on required columns
-- Missing DEFAULT values where appropriate
-- TEXT without length consideration
-- TIMESTAMP without timezone (use TIMESTAMPTZ)
-- Missing updated_at trigger
+#### Common Issues to Flag
+- Missing `NOT NULL` on required columns
+- Missing `DEFAULT` values where appropriate
+- Missing `updated_at` trigger
+- Missing table comments
+- Hardcoded values that should be configurable
 
-Use skills: seraphae-context, seraphae-supabase
+### Step 4: Search for Issues
 
-## Output Format
+```bash
+# Check for missing RLS
+rg "CREATE TABLE" packages/database/supabase/migrations/ | xargs -I{} sh -c 'grep -L "ENABLE ROW LEVEL SECURITY" {}'
 
-### Migration: [filename]
+# Check for TIMESTAMP without timezone
+rg "TIMESTAMP\s+NOT\s+NULL" --type sql packages/database/supabase/migrations/
 
-✅ **Passes**: [what's good]
-
-⚠️ **Issues Found**:
-| Severity | Issue | Line | Recommendation |
-|----------|-------|------|----------------|
-
-📋 **Recommendations**:
-1. [Action items]`
-})
+# Check for missing org_id
+rg "CREATE TABLE" packages/database/supabase/migrations/ | xargs -I{} sh -c 'grep -L "org_id" {}'
 ```
 
-### Step 3: Present Review
+### Step 5: Output Format
 
-Show review results with recommended fixes.
+```markdown
+## Migration Review: [filename]
+
+### Summary
+- **Status:** [PASS / NEEDS CHANGES]
+- **Tables:** [list of tables affected]
+
+### Passes
+- [What's correct and well-done]
+
+### Issues Found
+
+| Severity | Issue | Line | Recommendation |
+|----------|-------|------|----------------|
+| Critical | [issue] | [line] | [fix] |
+| Warning | [issue] | [line] | [fix] |
+
+### Recommendations
+1. [Prioritized action items]
+2. [Next action item]
+```
+
+### Step 6: Present Review
+
+Show review results with specific line numbers and recommended fixes.
+
+Offer to apply critical fixes immediately.

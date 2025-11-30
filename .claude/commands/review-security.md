@@ -11,71 +11,100 @@ argument-hint: [scope] (optional - reviews all Server Actions if omitted)
 
 ## Instructions
 
-You are invoking the seraphae-reviewer agent for security-focused analysis.
+You are performing a security-focused review for the AppDistillery Platform.
 
-### Step 1: Identify Scope
+### Step 1: Load Context
+
+Load relevant skills:
+```
+Skill("code-quality")
+Skill("project-context")
+Skill("supabase")
+```
+
+### Step 2: Identify Scope
 
 Scope: `$ARGUMENTS`
 
-If empty, focus on:
-- `app/actions/` - All Server Actions
-- `app/api/webhooks/` - Webhook handlers
-- Files handling customer data
+If empty, focus on high-risk areas:
+- `apps/web/app/actions/` - Server Actions
+- `packages/core/` - Core services
+- `modules/*/actions/` - Module Server Actions
+- Files handling user data
 
-### Step 2: Launch Reviewer Agent
+### Step 3: Security Checklist
 
-Use the Task tool to invoke seraphae-reviewer:
-
-```
-Task({
-  subagent_type: "seraphae-reviewer",
-  prompt: `Perform security-focused review for: ${ARGUMENTS || 'Server Actions and webhooks'}
-
-## Security Checklist
-
-### Server Actions
+#### Server Actions
 - [ ] Zod validation on ALL inputs
-- [ ] Customer ID from session, not client input
+- [ ] User/org ID from session, not client input
 - [ ] Authorization: Does user own this resource?
 - [ ] No sensitive data in error responses
-- [ ] No stack traces exposed
+- [ ] No stack traces exposed to client
 
-### Webhooks
-- [ ] HMAC signature verification (Shopify, Sendcloud)
-- [ ] Timing-safe comparison for signatures
-- [ ] Webhook secrets from environment variables
-- [ ] Failed verification returns 401
+#### Core Service Usage
+- [ ] AI calls via `brainHandle()` only (not direct provider)
+- [ ] Usage events via `recordUsage()` only
+- [ ] No bypassing rate limits or quotas
 
-### Data Exposure
+#### RLS / Database
+- [ ] All tenant tables have `org_id` column
+- [ ] RLS policies enabled on all tables
+- [ ] `org_id` filter in all queries (defense in depth)
+- [ ] No raw SQL with user input
+
+#### Data Exposure
 - [ ] No PII in client-side logs
-- [ ] No secrets in NEXT_PUBLIC_* vars
+- [ ] No secrets in `NEXT_PUBLIC_*` vars
 - [ ] Service role key only in server code
+- [ ] Sensitive data not in error messages
 
-### Search Commands
-\`\`\`bash
-# Server Actions without Zod
-grep -rln "'use server'" --include="*.ts" app/actions/ | xargs grep -L "safeParse\\|z\\."
+### Step 4: Search for Issues
+
+```bash
+# Server Actions without Zod validation
+rg "'use server'" --type ts apps/web/app/actions/ packages/core/ | xargs rg -L "safeParse|z\."
 
 # Potential secret exposure
-grep -rn "NEXT_PUBLIC_.*SECRET\\|NEXT_PUBLIC_.*KEY" --include="*.ts" --include="*.tsx"
+rg "NEXT_PUBLIC_.*SECRET|NEXT_PUBLIC_.*KEY" --type ts --type tsx
 
-# Customer ID from client
-grep -rn "customerId.*:" --include="*.ts" app/actions/
-\`\`\`
+# Direct AI provider calls (should use brainHandle)
+rg "import.*@ai-sdk|import.*anthropic|import.*openai" --type ts apps/ modules/
 
-Use skills: seraphae-context, seraphae-code-quality
-
-Focus on OWASP risks:
-- A01: Broken Access Control (IDOR, missing auth)
-- A03: Injection (though Drizzle parameterizes)
-- A05: Security Misconfiguration
-
-Output security findings by severity with fix recommendations.`
-})
+# Direct usage_events inserts (should use recordUsage)
+rg "insert.*usage_events|usage_events.*insert" --type ts
 ```
 
-### Step 3: Present Findings
+### Step 5: OWASP Focus Areas
 
-Show security issues with remediation guidance.
+- **A01: Broken Access Control** - IDOR, missing auth checks
+- **A02: Cryptographic Failures** - Secrets exposure
+- **A03: Injection** - Though parameterized queries mitigate
+- **A05: Security Misconfiguration** - Exposed endpoints
 
-**Note**: For comprehensive security audit, use `/security-audit` instead.
+### Step 6: Output Format
+
+```markdown
+## Security Review Report
+
+**Scope:** [files/paths reviewed]
+**Risk Level:** [High/Medium/Low]
+
+### Critical Vulnerabilities
+- `file:line` - [Issue + remediation]
+
+### High Risk Issues
+- `file:line` - [Issue + remediation]
+
+### Medium Risk Issues
+- `file:line` - [Issue + remediation]
+
+### Recommendations
+1. [Prioritized security improvement]
+2. [Next improvement]
+```
+
+### Step 7: Present Findings
+
+Show security issues with specific remediation guidance.
+
+Offer to help fix critical issues immediately.

@@ -78,8 +78,28 @@ For detailed information, consult:
 - **[integration-registry.md](references/integration-registry.md)** - Supabase, Anthropic integration details
 - **[module-patterns.md](references/module-patterns.md)** - Coding patterns, Server Actions, Zod schemas
 
+## Available Agents
+
+For complex multi-step tasks, delegate to specialized agents in `.claude/agents/`:
+
+| Agent | Purpose |
+|-------|---------|
+| strategic-advisor | Planning, task decomposition, architecture decisions |
+| appdistillery-developer | Backend implementation, Server Actions, Core kernel |
+| ux-ui | Frontend components, styling, accessibility |
+| database-architect | Schema design, migrations, RLS policies |
+| test-engineer | TDD workflow, test writing, coverage |
+| code-reviewer | Iterative review, pattern guidance |
+| security-auditor | Threat modeling, RLS verification |
+| performance-analyst | N+1 detection, optimization |
+| architecture-advisor | Module boundaries, tech debt |
+| documentation-writer | API docs, ADRs |
+
+See `.claude/INDEX.md` for full agent list and selection guide.
+
 ## Related Documentation
 
+- `.claude/INDEX.md` - Full list of agents, skills, commands
 - `docs/PROJECT_PLAN.md` - Master specification (~1200 lines)
 - `.claude/CONTEXT.md` - Session paste context
 - `.claude/commands/` - Custom slash commands (/review, /migration-new, etc.)

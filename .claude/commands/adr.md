@@ -11,51 +11,58 @@ argument-hint: <decision-title>
 
 ## Instructions
 
-You are invoking the seraphae-documenter agent to create an Architecture Decision Record.
+You are creating an Architecture Decision Record for the AppDistillery Platform.
 
-### Step 1: Capture Decision
+### Step 1: Load Context
 
-Decision title: `$ARGUMENTS`
-
-### Step 2: Launch Documenter Agent
-
-Use the Task tool to invoke seraphae-documenter:
-
+Load relevant skills:
 ```
-Task({
-  subagent_type: "seraphae-documenter",
-  prompt: `Create an Architecture Decision Record for: ${ARGUMENTS}
+Skill("project-context")
+Skill("documentation")
+```
 
-## ADR Creation Workflow
+### Step 2: Check Existing ADRs
 
-### 1. Check Existing ADRs
-Read docs/adr/ directory to:
+Read `docs/decisions/` directory to:
 - Find next sequential number (ADR-001, ADR-002, etc.)
 - Understand existing style and format
 
-### 2. Gather Context
+```bash
+ls -la docs/decisions/
+```
+
+### Step 3: Gather Context
+
 If this is a complex decision, may need to:
 - Review relevant code
-- Understand current architecture
+- Understand current architecture (see `docs/PROJECT_PLAN.md`)
 - Identify alternatives considered
 
-### 3. Create ADR File
-Location: docs/adr/ADR-XXX-slug.md
+### Step 4: Create ADR File
 
-### 4. ADR Template
+**Location:** `docs/decisions/ADR-XXX-slug.md`
 
-\`\`\`markdown
-# ADR-XXX: ${ARGUMENTS}
+Use this template:
+
+```markdown
+# ADR-XXX: [Decision Title]
 
 ## Status
+
 Proposed
 
+## Date
+
+[Today's date: YYYY-MM-DD]
+
 ## Context
+
 [What is the issue motivating this decision?]
 [Write for someone unfamiliar with the context]
 [Include relevant constraints and requirements]
 
 ## Decision
+
 [What specific change are we making?]
 [Be actionable and clear]
 [Include code patterns or file locations if relevant]
@@ -77,24 +84,32 @@ Proposed
 
 ### [Alternative 2]
 [Brief description and why not chosen]
-\`\`\`
 
-### 5. Quality Criteria
+## Related
+
+- Links to relevant code, docs, or other ADRs
+```
+
+### Step 5: Quality Criteria
+
+Before finalizing, ensure:
 - Context explains problem clearly to future readers
 - Decision is specific and actionable
 - Consequences include BOTH benefits AND trade-offs
 - Alternatives show due diligence
 - Status is "Proposed" until user approves
 
-Use skills: seraphae-context, seraphae-docs
+### Step 6: Review and Confirm
 
-Output:
-- Full ADR file path
-- Complete ADR content
-- Ask if user wants to change status to "Accepted"`
-})
-```
+Present the ADR for review and ask:
+1. Does the context accurately capture the problem?
+2. Is the decision clear and actionable?
+3. Should status be changed to "Accepted"?
 
-### Step 3: Review and Confirm
+### AppDistillery-Specific Considerations
 
-Present the ADR for review and ask if it should be marked as Accepted.
+When writing ADRs for this project, consider:
+- **Monorepo impact**: Which packages are affected?
+- **Tenant isolation**: Does this affect `org_id` filtering?
+- **Core services**: Does this affect `brainHandle()` or `recordUsage()`?
+- **Module boundaries**: Does this cross module boundaries?

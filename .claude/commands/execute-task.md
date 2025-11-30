@@ -12,15 +12,15 @@ argument-hint: <task-id-or-path> [--quick|--full] [extra-context]
 ## Step 0: Parse Arguments
 
 Parse the input to extract:
-- **Task identifier**: Either a task ID (e.g., "001") or full path (e.g., "/tasks/backlog/TASK-001-shopify-adapter.md")
-- **Workflow mode**: `--quick` or `--full` (if neither specified, auto-detect from complexity)
+- **Task identifier**: Either a task ID (e.g., "001") or full path (e.g., "tasks/backlog/TASK-001-feature.md")
+- **Workflow mode**: `--quick` or `--full` (default: auto-detect from complexity)
 - **Extra context**: Any additional instructions after the flags
 
 ```
 Examples:
-/execute-task 001                          → Quick mode (auto), task ID
+/execute-task 001                          → Auto mode, task ID
 /execute-task 001 --full                   → Full mode, task ID
-/execute-task /tasks/backlog/TASK-001-shopify-adapter.md --quick
+/execute-task tasks/backlog/TASK-001.md --quick
 /execute-task 002 --full Focus on error handling
 ```
 
@@ -31,9 +31,9 @@ Examples:
 ### 1.1 Find Task File
 
 **If task ID provided (e.g., "001"):**
-1. Search `/tasks/backlog/TASK-001-*.md`
-2. If not found, search `/tasks/active/TASK-001-*.md`
-3. If not found → STOP with error "Task TASK-001 not found"
+1. Search `tasks/backlog/TASK-001-*.md`
+2. If not found, search `tasks/active/TASK-001-*.md`
+3. If not found → STOP with error "Task not found"
 
 **If full path provided:**
 1. Verify file exists at path
@@ -41,96 +41,99 @@ Examples:
 
 ### 1.2 Load Task Content
 
-Use Read tool to load the task file. Extract:
+Read the task file and extract:
 - **Title**: From `# TASK-XXX:` header
 - **Priority**: P1-High, P2-Medium, P3-Low
 - **Complexity**: 1-5 points
-- **Phase**: Phase 1, 2, or 3
-- **Module**: storefront, checkout, account, loyalty, shipping, core
+- **Module**: core, agency, web, database, ui
 - **Acceptance Criteria**: List of testable conditions
 - **Dependencies**: Blocked by / Blocks relationships
 
-### 1.3 Validate Phase
+### 1.3 Load Skills
 
-**Current project phase: Phase 1 (Core Commerce MVP)**
-
-If task phase > 1:
+Load relevant skills based on task:
 ```
-⚠️ PHASE MISMATCH: This task is Phase {task.phase}, but current project is Phase 1.
-
-Options:
-A) Defer - Keep in backlog for later
-B) Proceed - Implement anyway (requires justification)
-C) Adapt - Implement a Phase 1-compatible alternative
-
-Use AskUserQuestion to get decision.
+Skill("project-context")   # Always load
+Skill("code-quality")      # Always load
 ```
+
+Additional skills based on task type:
+| Task Type | Skills to Load |
+|-----------|---------------|
+| UI/Components | `design-system`, `shadcn`, `tailwindcss` |
+| Database | `supabase` |
+| Testing | `testing` |
+| Next.js specific | `nextjs` |
+| AI features | `ai-llm-setup` |
+
+### 1.3a Agent Orchestration Strategy
+
+The main agent acts as **orchestrator**, delegating specialized work to agents in `.claude/agents/`.
+
+**Agent Selection by Task Type:**
+
+| Task Domain | Primary Agent | Support Agents |
+|-------------|---------------|----------------|
+| Backend/Server Actions | appdistillery-developer | test-engineer, database-architect |
+| Frontend/UI | ux-ui | test-engineer |
+| Database | database-architect | security-auditor |
+| Testing | test-engineer | appdistillery-developer |
+| Security-sensitive | security-auditor | appdistillery-developer |
+
+**Parallel Execution:**
+Launch independent agents in parallel (single message, multiple Task calls):
+- Implementation + Testing can run in parallel after planning
+- Multiple file explorations can run in parallel
+- Frontend + Backend when they don't depend on each other
+
+**Context Gathering:**
+Before implementation, use `Explore` agent to:
+- Find similar patterns in codebase
+- Identify files to modify
+- Understand existing implementations
 
 ### 1.4 Determine Workflow Mode
 
 **Auto-detection (if no flag provided):**
 - Complexity 1-2 points → Quick mode
 - Complexity 3+ points → Full mode
-- Cross-module task (spans 3+ areas) → Full mode
 
 **Override with flags:**
 - `--quick` → Force quick mode
 - `--full` → Force full mode
 
-### 1.5 Load Skills
-
-**Always load:**
-```
-Skill(seraphae-context)      # Project state and architecture
-Skill(seraphae-code-quality) # Coding standards
-```
-
-**Load based on module:**
-| Module | Additional Skills |
-|--------|-------------------|
-| storefront | seraphae-shopify, seraphae-design-system |
-| checkout | seraphae-shopify |
-| account | seraphae-shopify, seraphae-supabase |
-| loyalty | seraphae-supabase |
-| shipping | seraphae-shopify |
-| core | seraphae-nextjs |
-
-### 1.6 Initialize Progress Tracking
+### 1.5 Initialize Progress Tracking
 
 **Quick Mode:**
-```typescript
-TodoWrite({
-  todos: [
-    { content: "Load task and plan", status: "in_progress", activeForm: "Loading task" },
-    { content: "Implement with agents", status: "pending", activeForm: "Implementing" },
-    { content: "Test and verify", status: "pending", activeForm: "Testing" },
-    { content: "Commit and complete", status: "pending", activeForm: "Committing" }
-  ]
-})
+```
+TodoWrite([
+  { content: "Load task and plan", status: "in_progress" },
+  { content: "Implement changes", status: "pending" },
+  { content: "Test and verify", status: "pending" },
+  { content: "Commit and complete", status: "pending" }
+])
 ```
 
 **Full Mode:**
-```typescript
-TodoWrite({
-  todos: [
-    { content: "Load task and plan", status: "in_progress", activeForm: "Loading task" },
-    { content: "Implement with agents", status: "pending", activeForm: "Implementing" },
-    { content: "Test and verify", status: "pending", activeForm: "Testing" },
-    { content: "Review code quality", status: "pending", activeForm: "Reviewing" },
-    { content: "Update documentation", status: "pending", activeForm: "Documenting" },
-    { content: "Commit and complete", status: "pending", activeForm: "Committing" }
-  ]
-})
+```
+TodoWrite([
+  { content: "Load task and plan", status: "in_progress" },
+  { content: "Implement changes", status: "pending" },
+  { content: "Test and verify", status: "pending" },
+  { content: "Review code quality", status: "pending" },
+  { content: "Update documentation", status: "pending" },
+  { content: "Commit and complete", status: "pending" }
+])
 ```
 
-### 1.7 Present Plan & Get Approval
+### 1.6 Present Plan & Get Approval
 
-Present execution plan to user:
+Present execution plan:
 ```markdown
 ## Task Execution Plan
 
 **Task:** TASK-XXX - [Title]
-**Priority:** [Priority] | **Complexity:** [X] points | **Phase:** [Phase]
+**Priority:** [Priority] | **Complexity:** [X] points
 **Module:** [Module]
 **Workflow:** [Quick/Full] mode
 
@@ -138,10 +141,7 @@ Present execution plan to user:
 [List from task file]
 
 ### Implementation Approach
-[Brief description of how task will be implemented]
-
-### Agents to Use
-- [List relevant agents based on task type]
+[Brief description]
 
 ### Extra Context
 [Any additional instructions from $ARGUMENTS]
@@ -158,8 +158,7 @@ Use AskUserQuestion:
 ### 2.1 Move Task to Active
 
 ```bash
-# Move task file from backlog to active (if in backlog)
-mv /tasks/backlog/TASK-XXX-*.md /tasks/active/
+mv tasks/backlog/TASK-XXX-*.md tasks/active/
 ```
 
 Update task file status:
@@ -168,98 +167,46 @@ Update task file status:
 **Started:** [Today's date]
 ```
 
-### 2.2 Delegate to Agents
+### 2.2 Implement Changes
 
-**CRITICAL**: Do NOT write implementation code yourself. Delegate ALL implementation to specialized agents.
+Follow these principles:
+1. **Read before write** - Understand existing code before modifying
+2. **Incremental changes** - Small, testable commits
+3. **Follow patterns** - Use existing project patterns
+4. **Type safety** - No `any`, use Zod for external data
 
-**Agent Selection Guide:**
+**Critical AppDistillery patterns:**
+- Use `brainHandle()` for AI calls (not direct provider)
+- Use `recordUsage()` for usage tracking
+- Include `org_id` in all tenant queries
+- Use Server Actions for mutations
+- Use Zod schemas for validation
 
-| Task Type | Agent | When to Use |
-|-----------|-------|-------------|
-| API/Adapter work | seraphae-implementer | Shopify, Supabase, Sendcloud integration |
-| Server Actions | seraphae-implementer | Cart, auth, mutations |
-| UI Components | ux-ui-specialist | Brand styling, components, accessibility |
-| Full Pages | seraphae-implementer + ux-ui-specialist | Pages with data fetching + UI |
-| Database | seraphae-migrator | Schema changes, RLS policies |
-| Security | seraphae-security | Auth flows, sensitive data |
-| Tests | seraphae-tester | Unit, component, E2E tests |
-| Bug diagnosis | seraphae-debugger | Runtime errors, build failures |
-| i18n/RTL | seraphae-i18n-auditor | Translation completeness, RTL layouts |
+### 2.2a Delegate to Specialized Agents
 
-**Agent Invocation Pattern:**
-```typescript
-Task({
-  subagent_type: "seraphae-implementer",
-  prompt: `Implement TASK-XXX: [Title]
+For complex implementations, delegate to specialized agents:
 
-Use skills: seraphae-context, seraphae-code-quality, [module-specific skills]
-
-## Requirements
-[Acceptance criteria from task]
-
-## Implementation Notes
-[Technical approach from task file]
-
-## Files to Create/Modify
-[List from task file]
-
-## Extra Context
-[Any additional instructions]
-
-After implementation, ensure all TypeScript compiles and code follows project patterns.`
-})
+**Backend work:**
+```
+Task(subagent_type="appdistillery-developer", prompt="Implement [feature]...")
 ```
 
-### 2.3 Parallel vs Sequential Execution
-
-**IMPORTANT**: Maximize efficiency by running independent agents in parallel.
-
-**Parallel Execution Decision Matrix:**
-
-| Scenario | Execution | Rationale |
-|----------|-----------|-----------|
-| Adapter + UI components | ✅ Parallel | No shared dependencies |
-| Server Action + Component that uses it | ❌ Sequential | Component depends on action |
-| Multiple independent UI components | ✅ Parallel | No shared state |
-| Database migration + Code using new schema | ❌ Sequential | Code depends on migration |
-| Tests for existing code | ✅ Parallel with impl | Tests don't modify implementation |
-| Feature + Tests for that feature | ❌ Sequential | Tests need feature to exist |
-
-**Parallel Execution Pattern:**
-When work items are independent, launch agents in a **single message** with multiple Task calls:
-```typescript
-// ✅ CORRECT: Single message, multiple parallel agents
-Task({ subagent_type: "seraphae-implementer", prompt: "Implement Shopify adapter..." })
-Task({ subagent_type: "ux-ui-specialist", prompt: "Create ProductCard component..." })
-Task({ subagent_type: "seraphae-tester", prompt: "Write tests for existing utils..." })
+**Frontend work:**
+```
+Task(subagent_type="ux-ui", prompt="Create component for [feature]...")
 ```
 
-**Sequential Execution Pattern:**
-When work items have dependencies, wait for each to complete:
-```typescript
-// Step 1: Create the foundation
-Task({ subagent_type: "seraphae-migrator", prompt: "Create rewards_ledger table..." })
-// Wait for completion, then...
-
-// Step 2: Build on top
-Task({ subagent_type: "seraphae-implementer", prompt: "Implement loyalty adapter using rewards_ledger..." })
+**Parallel delegation (single message, multiple calls):**
+```
+Task(subagent_type="appdistillery-developer", prompt="Implement Server Action...")
+Task(subagent_type="ux-ui", prompt="Create form component...")
 ```
 
-**Full Page Implementation Example:**
-For pages requiring both data layer and UI:
-```typescript
-// Parallel: Adapter and basic UI structure can be built simultaneously
-Task({ subagent_type: "seraphae-implementer", prompt: "Create collection adapter with getCollectionByHandle..." })
-Task({ subagent_type: "ux-ui-specialist", prompt: "Create ProductGrid and ProductCard components..." })
-// Wait for both, then...
+See `.claude/INDEX.md` for full agent list and selection guide.
 
-// Sequential: Page assembly requires both pieces
-Task({ subagent_type: "seraphae-implementer", prompt: "Wire up CollectionPage using adapter and components..." })
-```
+### 2.3 Track Progress
 
-### 2.4 Track Progress
-
-Update TodoWrite as agents complete work.
+Update TodoWrite as you complete each step.
 
 ---
 
@@ -270,22 +217,22 @@ Update TodoWrite as agents complete work.
 ```bash
 pnpm test              # Unit tests
 pnpm lint              # ESLint
-pnpm build             # Verify build succeeds
+pnpm typecheck         # TypeScript
+pnpm build             # Verify build
 ```
 
 ### 3.2 Handle Failures
 
 If tests fail:
-1. Use seraphae-debugger to diagnose
-2. Fix issues via appropriate agent
+1. Use `/debug` command to diagnose
+2. Fix issues
 3. Re-run tests
 
 ### 3.3 Verify Acceptance Criteria
 
-Go through each acceptance criterion from task file:
+Go through each acceptance criterion:
 - [ ] Criterion 1 - [Verified/Not verified]
 - [ ] Criterion 2 - [Verified/Not verified]
-- ...
 
 If any criterion not met, return to Phase 2.
 
@@ -293,100 +240,27 @@ If any criterion not met, return to Phase 2.
 
 ## Phase 4: Review (Full Mode Only)
 
-### 4.1 Determine Review Scope
+### 4.1 Code Review
 
-Analyze the task to determine which specialized reviews are needed:
-
-| Task Characteristics | Required Reviews |
-|---------------------|------------------|
-| UI components / pages | ux-ui-specialist (a11y), seraphae-i18n-auditor (RTL) |
-| Server Actions | seraphae-security |
-| Database / RLS | seraphae-security |
-| All tasks | seraphae-reviewer (general quality) |
-
-### 4.2 Launch Specialized Reviews in Parallel
-
-**IMPORTANT**: Run applicable specialized reviews simultaneously for efficiency.
-
-**For UI-heavy tasks:**
-```typescript
-// Single message, parallel specialized reviews
-Task({
-  subagent_type: "seraphae-reviewer",
-  prompt: `Review implementation for TASK-XXX.
-Focus on: TypeScript strictness, architecture compliance, performance.
-Files changed: [list files]
-Provide findings grouped by severity: Critical, Warning, Suggestion.`
-})
-Task({
-  subagent_type: "ux-ui-specialist",
-  prompt: `Accessibility audit for TASK-XXX implementation.
-Focus on: WCAG 2.2 AA compliance, keyboard navigation, screen reader support.
-Files changed: [list UI files]`
-})
-Task({
-  subagent_type: "seraphae-i18n-auditor",
-  prompt: `RTL and i18n audit for TASK-XXX.
-Focus on: Logical properties (start/end vs left/right), translation completeness, Arabic text rendering.
-Files changed: [list files with UI or translations]`
-})
+Use `/review` command on changed files:
+```
+/review [changed files]
 ```
 
-**For Server Action / API tasks:**
-```typescript
-// Single message, parallel reviews
-Task({
-  subagent_type: "seraphae-reviewer",
-  prompt: `Review implementation for TASK-XXX.
-Focus on: TypeScript strictness, architecture compliance, error handling.
-Files changed: [list files]`
-})
-Task({
-  subagent_type: "seraphae-security",
-  prompt: `Security audit for TASK-XXX.
-Focus on: Input validation, authorization checks, IDOR vulnerabilities, data exposure.
-Files changed: [list Server Action and adapter files]`
-})
-```
+Focus on:
+- TypeScript strictness
+- Architecture compliance
+- Tenant isolation
+- Security
+- Performance
 
-**For database tasks:**
-```typescript
-// Single message, parallel reviews
-Task({
-  subagent_type: "seraphae-reviewer",
-  prompt: `Review implementation for TASK-XXX.
-Focus on: TypeScript strictness, architecture compliance.
-Files changed: [list files]`
-})
-Task({
-  subagent_type: "seraphae-security",
-  prompt: `RLS policy audit for TASK-XXX.
-Focus on: Policy completeness, session variable usage, defense-in-depth.
-Tables affected: [list tables]`
-})
-```
-
-### 4.3 Consolidate Findings
-
-Merge findings from all reviewers into a single prioritized list:
-
-**Critical** (must fix):
-- [ ] Finding 1 (from reviewer-name)
-- [ ] Finding 2 (from reviewer-name)
-
-**Warning** (should fix or justify):
-- [ ] Finding 3 (from reviewer-name)
-
-**Suggestion** (consider):
-- [ ] Finding 4 (from reviewer-name)
-
-### 4.4 Address Findings
+### 4.2 Address Findings
 
 - Fix all Critical findings
 - Fix or justify Warning findings
 - Consider Suggestion findings
 
-### 4.5 Re-run Tests
+### 4.3 Re-run Tests
 
 ```bash
 pnpm test && pnpm lint && pnpm build
@@ -398,19 +272,10 @@ pnpm test && pnpm lint && pnpm build
 
 ### 5.1 Update Documentation
 
-```typescript
-Task({
-  subagent_type: "seraphae-documenter",
-  prompt: `Update documentation for TASK-XXX completion.
-
-Required updates:
-1. If architectural decision was made → Create ADR in docs/architecture/decisions/
-2. If new pattern established → Update relevant skill file
-3. Update any affected README or guide
-
-Use skill: seraphae-docs`
-})
-```
+If needed:
+- **ADR**: For architectural decisions, use `/adr [decision-title]`
+- **Code comments**: Add JSDoc for public APIs
+- **README**: Update if new features affect usage
 
 ---
 
@@ -419,7 +284,7 @@ Use skill: seraphae-docs`
 ### 6.1 Move Task to Completed
 
 ```bash
-mv /tasks/active/TASK-XXX-*.md /tasks/completed/
+mv tasks/active/TASK-XXX-*.md tasks/completed/
 ```
 
 Update task file:
@@ -430,33 +295,11 @@ Update task file:
 
 ### 6.2 Update Task Index
 
-Update `/tasks/INDEX.md`:
-- Decrement Backlog/Active count
-- Increment Completed count
-- Move task to "Recently Completed" table
+Update `tasks/INDEX.md`:
+- Update counts
+- Move task to "Recently Completed"
 
-### 6.3 Update Context Files
-
-**IMPORTANT**: Keep project context current for future sessions.
-
-**If dependencies were added:**
-Update `.claude/skills/seraphae-context/references/dependencies.md`:
-- Add new packages with version and purpose
-
-**If new files/modules were created:**
-Update `.claude/skills/seraphae-context/references/architecture-map.md`:
-- Add new files to repository structure
-- Update "Implemented Modules" section
-- Check "Implementation Status" checkboxes
-
-**Always update:**
-Update `.ai/memory.md`:
-- Add task to "Completed Tasks" table
-- Update "Current Focus" section
-- Update "Next Steps" if blockers were removed
-- Note any key implementations or decisions
-
-### 6.4 Commit Changes
+### 6.3 Commit Changes
 
 ```bash
 git add .
@@ -465,7 +308,6 @@ feat(module): implement TASK-XXX description
 
 - [Key change 1]
 - [Key change 2]
-- [Key change 3]
 
 Acceptance criteria: all met
 
@@ -476,10 +318,10 @@ EOF
 )"
 ```
 
-### 6.5 Summary
+### 6.4 Summary
 
 ```markdown
-## ✅ Task Completed: TASK-XXX
+## Task Completed: TASK-XXX
 
 **Title:** [Task title]
 **Workflow:** [Quick/Full] mode
@@ -491,17 +333,12 @@ EOF
 - [Bullet point changes]
 
 ### Quality Gates
-- ✅ All tests passing
-- ✅ Build succeeds
-- ✅ Lint clean
+- [x] All tests passing
+- [x] Build succeeds
+- [x] Lint clean
 [Full mode only:]
-- ✅ Code review passed
-- ✅ Documentation updated
-
-### Context Updated
-- ✅ .ai/memory.md
-- ✅ dependencies.md (if packages added)
-- ✅ architecture-map.md (if modules added)
+- [x] Code review passed
+- [x] Documentation updated
 
 ### Files Changed
 [List of files]
@@ -516,13 +353,13 @@ EOF
 
 If any phase fails:
 
-1. **STOP** - Do not proceed to next phase
-2. **Document** - Note the failure point and error
-3. **Diagnose** - Use seraphae-debugger if needed
+1. **STOP** - Do not proceed
+2. **Document** - Note failure point and error
+3. **Diagnose** - Use `/debug` if needed
 4. **Resolve**:
-   - Fixable → Fix and resume from failed step
-   - Needs clarification → Use AskUserQuestion
-   - Blocker → Document and STOP, inform user
+   - Fixable → Fix and resume
+   - Needs clarification → Ask user
+   - Blocker → Document and STOP
 
 **Never proceed past failure without resolution.**
 
@@ -532,21 +369,13 @@ If any phase fails:
 
 | Workflow | Phases | When to Use |
 |----------|--------|-------------|
-| Quick | Plan → Implement → Test → Commit | 1-2 point tasks, simple changes |
-| Full | Plan → Implement → Test → Review → Document → Commit | 3+ point tasks, cross-cutting changes |
+| Quick | Plan → Implement → Test → Commit | 1-2 point tasks |
+| Full | Plan → Implement → Test → Review → Docs → Commit | 3+ point tasks |
 
-| Agent | Purpose | Parallel Safe |
-|-------|---------|---------------|
-| seraphae-implementer | Features, adapters, Server Actions | Yes* |
-| ux-ui-specialist | UI components, styling, accessibility | Yes* |
-| seraphae-tester | Tests (unit, component, E2E) | Yes** |
-| seraphae-reviewer | Code quality review | Yes |
-| seraphae-debugger | Error diagnosis | No (diagnostic) |
-| seraphae-migrator | Database schema | No (sequential) |
-| seraphae-security | Auth, RLS, sensitive data | Yes |
-| seraphae-i18n-auditor | Translation completeness, RTL | Yes |
-| seraphae-documenter | ADRs, documentation | No (after impl) |
-| strategic-planner | Complex task decomposition | No (planning) |
-
-\* Can run in parallel when working on independent modules
-\** Can run in parallel with implementation when testing existing code
+| Task Type | Key Skills |
+|-----------|-----------|
+| UI Components | `design-system`, `shadcn`, `tailwindcss` |
+| Server Actions | `code-quality`, `supabase` |
+| Database | `supabase` |
+| Testing | `testing` |
+| AI Features | `ai-llm-setup` |

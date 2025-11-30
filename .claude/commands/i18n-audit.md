@@ -1,5 +1,5 @@
 ---
-description: Full translation completeness audit (EN/AR)
+description: Full translation completeness audit (EN + EU languages)
 argument-hint: [namespace] (optional - audits all namespaces if omitted)
 ---
 
@@ -11,77 +11,112 @@ argument-hint: [namespace] (optional - audits all namespaces if omitted)
 
 ## Instructions
 
-You are invoking the seraphae-i18n-auditor agent for translation completeness.
+You are auditing translation completeness for the AppDistillery Platform.
 
-### Step 1: Identify Scope
+### Step 1: Load Context
 
-Namespace: `$ARGUMENTS`
-
-If empty, audit all namespaces in `/messages/en.json` and `/messages/ar.json`.
-
-### Step 2: Launch i18n Auditor Agent
-
-Use the Task tool to invoke seraphae-i18n-auditor:
-
+Load the i18n skill:
 ```
-Task({
-  subagent_type: "seraphae-i18n-auditor",
-  prompt: `Perform translation completeness audit for: ${ARGUMENTS || 'all namespaces'}
+Skill("i18n")
+```
 
-## Audit Workflow
+### Step 2: Identify Scope
 
-### Phase 1: Discovery
-1. Read /messages/en.json and /messages/ar.json
-2. Identify all namespaces and key counts
-3. Load seraphae-i18n skill if available
+If `$ARGUMENTS` specifies a namespace, audit only that namespace.
+If empty, audit all translation files.
 
-### Phase 2: Completeness Analysis
-1. Build key diff (recursively for nested objects):
-   - missing_in_ar: Keys in EN but not AR
-   - missing_in_en: Keys in AR but not EN (orphaned)
-   - present_in_both: Keys in both files
+### Step 3: Supported Languages
 
-2. For present_in_both, detect:
-   - Untranslated (identical to English, excluding brand terms)
-   - Interpolation mismatches ({name}, {count}, {date})
+**Primary:**
+- English (en) - Source language
 
-3. Check ICU message syntax validity
+**EU Languages (target markets):**
+- Norwegian (no) - Primary target market
+- Portuguese (pt) - Secondary target market
 
-### Phase 3: Technical Validation
-- Validate ICU plural forms (Arabic needs 6: zero, one, two, few, many, other)
-- Check t.rich() tag consistency (<bold>, <link>)
-- Detect hardcoded strings in components using useTranslations
+Translation files location: `apps/web/messages/`
 
-## Preserved Terms (NOT flagged as untranslated)
-- "Seraphaé" - brand name
-- Product line names
-- Numbers and prices
+### Step 4: Audit Checklist
 
-Use skills: seraphae-context, seraphae-i18n
+#### Completeness
+- [ ] All keys in `en.json` exist in other language files
+- [ ] No orphaned keys (keys that exist in translations but not in source)
+- [ ] Nested namespaces match structure
 
-## Output Format
+#### Syntax
+- [ ] Valid JSON syntax in all files
+- [ ] ICU message format correct (`{count, plural, ...}`)
+- [ ] Rich text tags balanced (for `t.rich()`)
+- [ ] No trailing commas
 
-\`\`\`markdown
-## Seraphaé i18n Audit Report
+#### Hardcoded Strings
+Search for untranslated strings in components:
+```bash
+# Find potential hardcoded strings in TSX
+rg '"[A-Z][a-z].*"' --type tsx apps/web/ packages/ui/ modules/
+rg "'[A-Z][a-z].*'" --type tsx apps/web/ packages/ui/ modules/
+
+# Exclude common false positives
+# - className strings
+# - aria-* attributes with valid values
+# - data-* attributes
+```
+
+#### next-intl Usage
+- [ ] Components use `useTranslations()` hook
+- [ ] Server components use `getTranslations()`
+- [ ] Dynamic values passed correctly `t('key', { value })`
+- [ ] Plural forms handled properly
+
+### Step 5: Output Format
+
+```markdown
+## i18n Audit Report
+
+**Scope:** [namespace or all]
+**Languages:** en, no, pt
 
 ### Summary
-- Total EN keys: X
-- Total AR keys: Y
-- Missing in AR: Z (X%)
-- Orphaned in AR: N
 
-### 🔴 Critical (Must Fix)
-[Missing keys, broken ICU syntax]
+| Language | Total Keys | Translated | Missing | Coverage |
+|----------|-----------|------------|---------|----------|
+| en (source) | X | X | - | 100% |
+| no | X | X | X | X% |
+| pt | X | X | X | X% |
 
-### 🟡 Warnings
-[Untranslated strings, placeholder mismatches]
+### Missing Translations
 
-### Missing Translation Keys
-| Namespace | Key | English Value |
-\`\`\``
-})
+#### Norwegian (no)
+- `namespace.key.name` - "English value"
+- `namespace.other.key` - "English value"
+
+#### Portuguese (pt)
+- `namespace.key.name` - "English value"
+
+### Orphaned Keys
+- `no.json`: `old.removed.key`
+
+### Hardcoded Strings Found
+- `file:line` - "Hardcoded string"
+
+### ICU Syntax Issues
+- `no.json:key` - Invalid plural form
+
+### Recommendations
+1. [Prioritized action items]
 ```
 
-### Step 3: Present Audit Report
+### Step 6: Present Report
 
-Show translation gaps with prioritized action items.
+Show audit results and offer to:
+1. Generate missing key stubs
+2. Remove orphaned keys
+3. Fix syntax issues
+
+### Adding New Language Support
+
+To add a new EU language:
+1. Create `apps/web/messages/{locale}.json`
+2. Copy structure from `en.json`
+3. Update `i18n.ts` config with new locale
+4. Run `/i18n-audit` to verify completeness

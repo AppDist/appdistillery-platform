@@ -11,91 +11,154 @@ argument-hint: <migration-name> [description]
 
 ## Instructions
 
-You are invoking the seraphae-migrator agent to create a new database migration.
+You are creating a new database migration for the AppDistillery Platform.
 
-### Step 1: Parse Input
+### Step 1: Load Context
+
+Load the supabase skill:
+```
+Skill("supabase")
+```
+
+### Step 2: Parse Input
 
 Migration name: `$ARGUMENTS`
 
 The name should be descriptive, e.g.:
-- `create_profiles_table`
-- `add_rewards_ledger`
-- `add_index_on_email`
+- `create_organizations_table`
+- `add_agency_leads_table`
+- `add_index_on_org_id`
 
-### Step 2: Launch Migrator Agent
+### Step 3: Determine Migration Type
 
-Use the Task tool to invoke seraphae-migrator:
+**Core tables** (shared across all modules):
+- `public.<entity>` - e.g., `organizations`, `usage_events`, `audit_log`
 
-```
-Task({
-  subagent_type: "seraphae-migrator",
-  prompt: `Create a new Supabase migration: ${ARGUMENTS}
+**Module tables** (specific to a module):
+- `public.<module>_<entity>` - e.g., `agency_leads`, `agency_proposals`
 
-## Migration Requirements
+### Step 4: Create Migration File
 
-### File Location
-supabase/migrations/YYYYMMDDHHMMSS_${ARGUMENTS}.sql
+**Location:** `packages/database/supabase/migrations/YYYYMMDDHHMMSS_${name}.sql`
 
-### Required Elements
-
-1. **Schema changes** (tables, columns, constraints)
-2. **RLS enablement** - ALWAYS enable RLS on new tables
-3. **RLS policies** - Using Seraphaé identity pattern:
-   \`\`\`sql
-   CREATE POLICY "policy_name" ON table_name
-     FOR SELECT
-     TO authenticated
-     USING (
-       shopify_customer_id = (SELECT current_setting('app.current_shopify_customer_id', true))
-     );
-   \`\`\`
-4. **Indexes** - On foreign keys, policy columns, frequently queried columns
-
-### Critical Context
-- NO Supabase Auth - use shopify_customer_id as identity
-- Service role bypasses RLS (used in Server Actions)
-- Always use (SELECT current_setting(..., true)) with subquery wrapper
-
-### Naming Convention
-- Tables: snake_case, plural (profiles, rewards_ledger)
-- Columns: snake_case
-- Indexes: idx_tablename_columnname
-- Policies: descriptive, e.g., "Users can view own profile"
-
-### Phase Awareness
-Current phase: Phase 1 (Core Commerce)
-- profiles table exists
-- rewards_ledger is Phase 2
-
-If requested table is Phase 2+, confirm before creating.
-
-Use skills: seraphae-context, seraphae-supabase
-
-## Output Format
-
-📁 Migration: supabase/migrations/YYYYMMDDHHMMSS_name.sql
-
-📝 SQL:
-\`\`\`sql
--- Full migration SQL with comments
-\`\`\`
-
-✅ Verification:
-1. Run \`supabase db reset\` locally
-2. Verify table/policy creation
-3. Test RLS with session variable
-
-↩️ Rollback (forward-fix):
-\`\`\`sql
--- SQL to undo if needed
-\`\`\``
-})
-```
-
-### Step 3: Review and Apply
-
-Review the generated migration before running:
+Generate timestamp:
 ```bash
-supabase db reset  # Test locally
-supabase db push   # Push to remote (when ready)
+date +%Y%m%d%H%M%S
+```
+
+### Step 5: Migration Template
+
+```sql
+-- Migration: [description]
+-- Created: [timestamp]
+
+-- ============================================
+-- Table Definition
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS public.[table_name] (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+
+  -- Domain columns here
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Updated at trigger
+CREATE TRIGGER set_updated_at
+  BEFORE UPDATE ON public.[table_name]
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at();
+
+-- ============================================
+-- Indexes
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_[table]_org_id
+  ON public.[table_name](org_id);
+
+-- Add indexes for foreign keys and frequently queried columns
+
+-- ============================================
+-- Row Level Security
+-- ============================================
+
+ALTER TABLE public.[table_name] ENABLE ROW LEVEL SECURITY;
+
+-- Tenant isolation policy
+CREATE POLICY "tenant_isolation_select" ON public.[table_name]
+  FOR SELECT TO authenticated
+  USING (org_id = (auth.jwt()->>'org_id')::uuid);
+
+CREATE POLICY "tenant_isolation_insert" ON public.[table_name]
+  FOR INSERT TO authenticated
+  WITH CHECK (org_id = (auth.jwt()->>'org_id')::uuid);
+
+CREATE POLICY "tenant_isolation_update" ON public.[table_name]
+  FOR UPDATE TO authenticated
+  USING (org_id = (auth.jwt()->>'org_id')::uuid);
+
+CREATE POLICY "tenant_isolation_delete" ON public.[table_name]
+  FOR DELETE TO authenticated
+  USING (org_id = (auth.jwt()->>'org_id')::uuid);
+
+-- Service role bypass (for Server Actions)
+CREATE POLICY "service_role_all" ON public.[table_name]
+  FOR ALL TO service_role
+  USING (true);
+
+-- ============================================
+-- Comments
+-- ============================================
+
+COMMENT ON TABLE public.[table_name] IS '[Description]';
+```
+
+### Step 6: Critical Requirements
+
+1. **Always include `org_id`** for tenant tables
+2. **Always enable RLS** on new tables
+3. **Always add service_role policy** for Server Actions
+4. **Always use TIMESTAMPTZ** (not TIMESTAMP)
+5. **Always add `created_at` and `updated_at`**
+6. **Always index `org_id`** and foreign keys
+
+### Step 7: Naming Conventions
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Core tables | `public.<entity>` | `organizations` |
+| Module tables | `public.<module>_<entity>` | `agency_leads` |
+| Columns | snake_case | `created_at` |
+| Indexes | `idx_table_column` | `idx_leads_org_id` |
+| Policies | Descriptive | `tenant_isolation_select` |
+
+### Step 8: Output Format
+
+```markdown
+## Migration Created
+
+**File:** `packages/database/supabase/migrations/YYYYMMDDHHMMSS_name.sql`
+
+**SQL:**
+[Full migration SQL]
+
+**Verification:**
+1. Run `pnpm db:reset` locally
+2. Verify table creation: `\d public.[table_name]`
+3. Verify RLS: `SELECT * FROM pg_policies WHERE tablename = '[table_name]'`
+
+**Generate Types:**
+```bash
+pnpm db:generate
+```
+```
+
+### Step 9: Apply Migration
+
+```bash
+pnpm db:reset   # Reset and apply all migrations locally
+pnpm db:generate # Regenerate TypeScript types
 ```

@@ -57,10 +57,12 @@ modules/agency/     → First module (consultancy tool)
 
 ## Key Files
 
+- `.claude/INDEX.md` — **Full list of agents, skills, commands**
 - `.claude/CONTEXT.md` — Detailed session context (paste at session start)
+- `.claude/agents/` — Specialized agents for complex tasks (10 agents)
+- `.claude/skills/` — Domain knowledge (14 skills)
+- `.claude/commands/` — Slash commands (/debug, /review, /execute-task, etc.)
 - `docs/PROJECT_PLAN.md` — Full specifications and roadmap
-- `.claude/commands/` — Custom slash commands (/debug, /review, /migration-new, etc.)
-- `.claude/skills/` — Specialized skills (nextjs, supabase, testing, etc.)
 
 ## Commits
 
