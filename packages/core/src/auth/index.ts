@@ -140,6 +140,17 @@ export { getAuthErrorMessage } from './errors'
 // Export tenant utilities
 export { getUserTenants } from './get-user-tenants'
 
+// Export tenant creation actions
+export { createHousehold, createOrganization } from './actions/create-tenant'
+
+// Export tenant schemas
+export {
+  CreateHouseholdSchema,
+  CreateOrganizationSchema,
+  type CreateHouseholdInput,
+  type CreateOrganizationInput,
+} from './schemas/tenant'
+
 // Export types
 export type {
   TenantType,

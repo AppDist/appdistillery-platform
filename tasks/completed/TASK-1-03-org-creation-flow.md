@@ -4,8 +4,10 @@ title: Account creation flows
 priority: P1-High
 complexity: 2
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+started: 2025-12-01
+completed: 2025-12-01
 ---
 
 # TASK-1-03: Account creation flows
@@ -33,14 +35,14 @@ Organization Creation:
 
 ## Acceptance Criteria
 
-- [ ] Personal signup creates user_profile only
-- [ ] createHousehold Server Action
-- [ ] createOrganization Server Action
-- [ ] Household form (name, slug)
-- [ ] Organization form (name, slug, org_number, billing_email)
-- [ ] Creator automatically added as 'owner' to tenant_members
-- [ ] Zod schemas for validation
-- [ ] Redirect to dashboard after creation
+- [x] Personal signup creates user_profile only
+- [x] createHousehold Server Action
+- [x] createOrganization Server Action
+- [x] Household form (name, slug)
+- [x] Organization form (name, slug, org_number, billing_email)
+- [x] Creator automatically added as 'owner' to tenant_members
+- [x] Zod schemas for validation
+- [x] Redirect to dashboard after creation
 
 ## Technical Notes
 
@@ -167,3 +169,4 @@ export async function createOrganization(data: z.infer<typeof CreateOrganization
 |------|--------|
 | 2024-11-30 | Task created |
 | 2024-11-30 | Updated: Added Personal/Household/Organization flows |
+| 2025-12-01 | Completed: Implemented Server Actions, Zod schemas, UI forms, tests (32 test cases) |

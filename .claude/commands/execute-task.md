@@ -290,24 +290,67 @@ If ANY answer is NO → STOP, identify the violation, and correct by delegating 
 
 ## Phase 4: Review Loop
 
-### 4.1 Launch Review Agents (PARALLEL)
+### 4.0 Run Verification (MANDATORY)
+
+Before launching review agents, run the `/verify` command:
+
+```
+SlashCommand("/verify")
+```
+
+This catches build errors, hardcoded values, and i18n violations that review agents might miss.
+
+If `/verify` reports **FIX REQUIRED**, delegate fixes to appropriate agent before proceeding.
+
+### 4.1 Determine Review Agents (Domain-Routed)
+
+**ALWAYS launch these 2 base reviewers:**
+- `code-reviewer` - Pattern compliance, code quality
+- `security-auditor` - Auth, tenant isolation, input validation
+
+**PLUS 1-2 domain experts based on files changed:**
+
+| Files Changed | Add Domain Expert | Reason |
+|---------------|-------------------|--------|
+| `packages/database/`, `supabase/migrations/` | `database-architect` | RLS, schema, indexes |
+| `apps/web/src/components/`, `packages/ui/`, UI `.tsx` files | `ux-ui` | Accessibility, design system |
+| `packages/core/`, cross-module imports | `architecture-advisor` | Module boundaries |
+| Data fetching, queries, list rendering | `performance-analyst` | Query optimization |
+
+**Total: 3-4 reviewers per task (2 base + 1-2 domain)**
+
+### 4.2 Launch Review Agents (PARALLEL)
 
 All review agents run in parallel in a SINGLE message:
 
 ```
 Task(subagent_type="code-reviewer", prompt="Review changes for TASK-XXX...")
 Task(subagent_type="security-auditor", prompt="Security review for TASK-XXX...")
-Task(subagent_type="test-engineer", prompt="Verify test coverage for TASK-XXX...")
+Task(subagent_type="[domain-expert]", prompt="[Domain-specific review] for TASK-XXX...")
 ```
 
-### 4.2 Collect Review Findings
+**Example for UI task:**
+```
+Task(subagent_type="code-reviewer", prompt="Review changes for TASK-XXX...")
+Task(subagent_type="security-auditor", prompt="Security review for TASK-XXX...")
+Task(subagent_type="ux-ui", prompt="Accessibility and design system review for TASK-XXX...")
+```
+
+**Example for database task:**
+```
+Task(subagent_type="code-reviewer", prompt="Review changes for TASK-XXX...")
+Task(subagent_type="security-auditor", prompt="Security review for TASK-XXX...")
+Task(subagent_type="database-architect", prompt="RLS and schema review for TASK-XXX...")
+```
+
+### 4.3 Collect Review Findings
 
 Aggregate findings from all review agents:
 - **Critical**: Must fix before completion
 - **Warning**: Should fix or justify
 - **Suggestion**: Consider for improvement
 
-### 4.3 Fix Loop (MANDATORY STRUCTURE)
+### 4.4 Fix Loop (MANDATORY STRUCTURE)
 
 **If Critical or Warning findings exist, follow this EXACT process:**
 
@@ -348,12 +391,13 @@ DO NOT SKIP re-review. Fixes can introduce regressions that only review agents c
 - Quality checks pass
 - If fixes were made to Critical/High issues, re-review completed
 
-### 4.4 Quick Mode Exception
+### 4.5 Quick Mode Exception
 
-In `--quick` mode, skip the full review loop:
-- Run quality checks only (`pnpm test && pnpm typecheck && pnpm build`)
+In `--quick` mode, use lighter review:
+- Run `/verify` command (catches build errors, hardcoded values)
+- Launch `code-reviewer` only (skip security + domain experts)
 - Fix any failures by delegating to appropriate agent (never fix directly)
-- Do not launch review agents
+- Skip documentation updates in Phase 5
 
 ### CHECKPOINT: Before Phase 5
 
@@ -433,12 +477,19 @@ Task(
 )
 ```
 
-### 5.3 Update Task File (Orchestrator Allowed)
+### 5.3 Update Task File (Orchestrator Allowed - STRICT)
 
-The orchestrator MAY update these files directly:
-- Task file status/frontmatter
-- tasks/INDEX.md counts
-- Moving task files between directories
+**The orchestrator MAY ONLY do these directly:**
+- Move task files between directories (backlog → active → completed)
+- Update task file frontmatter (status, dates)
+
+**The orchestrator MUST delegate these to documentation-writer:**
+- INDEX.md updates (counts, moving entries between sections)
+- Any documentation file changes
+- ADR creation
+- API docs, schema docs
+
+**VIOLATION:** If you edit INDEX.md or any doc file directly, you are violating orchestrator rules.
 
 ```yaml
 ---
@@ -535,9 +586,9 @@ EOF
 ### Files Changed
 [List of files]
 
-### Documentation Updated
-- [x] Task file completed
-- [x] INDEX.md updated
+### Documentation Updated (via documentation-writer)
+- [x] Task file completed (orchestrator)
+- [x] INDEX.md updated (documentation-writer)
 - [ ] ADR created (if applicable)
 - [ ] Context docs updated (if applicable)
 
@@ -571,8 +622,8 @@ If any phase fails:
 | 1. Load Task | Yes | Yes |
 | 2. Planning | Yes | Yes (may use strategic-advisor) |
 | 3. Implementation | Agent delegation | Agent delegation |
-| 4. Review Loop | Quality checks only | Full review agents + fix loop |
-| 5. Documentation | Task file only | Delegate to documentation-writer |
+| 4. Review Loop | `/verify` + code-reviewer | `/verify` + 3-4 reviewers + fix loop |
+| 5. Documentation | Task file only | Delegate ALL docs to documentation-writer |
 | 6. Completion | Yes | Yes |
 
 | Execution Mode | When to Use |
@@ -580,4 +631,14 @@ If any phase fails:
 | Sequential | Steps depend on each other |
 | Parallel | Steps are independent |
 
+| Review Agents | Always | Domain-Specific |
+|---------------|--------|-----------------|
+| code-reviewer | Yes | - |
+| security-auditor | Full mode | - |
+| ux-ui | - | UI components |
+| database-architect | - | Migrations, schema |
+| architecture-advisor | - | Core, cross-module |
+| performance-analyst | - | Data fetching, queries |
+
 **Remember: You are the ORCHESTRATOR. Agents IMPLEMENT. Never skip delegation.**
+**NEW: Always run `/verify` before review agents catch build/hardcoded/i18n issues.**

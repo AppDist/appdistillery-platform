@@ -10,6 +10,7 @@
     "./auth/client": "./src/auth/client.ts",
     "./auth/browser": "./src/auth/supabase-browser.ts",
     "./auth/errors": "./src/auth/errors.ts",
+    "./auth/schemas": "./src/auth/schemas/tenant.ts",
     "./brain": "./src/brain/index.ts",
     "./ledger": "./src/ledger/index.ts",
     "./modules": "./src/modules/index.ts"
@@ -20,6 +21,7 @@
       "auth/client": ["./src/auth/client.ts"],
       "auth/browser": ["./src/auth/supabase-browser.ts"],
       "auth/errors": ["./src/auth/errors.ts"],
+      "auth/schemas": ["./src/auth/schemas/tenant.ts"],
       "brain": ["./src/brain/index.ts"],
       "ledger": ["./src/ledger/index.ts"],
       "modules": ["./src/modules/index.ts"]
