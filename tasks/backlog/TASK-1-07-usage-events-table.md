@@ -12,14 +12,15 @@ created: 2024-11-30
 
 ## Description
 
-Create usage_events table for tracking AI usage and billable actions per organization.
+Create usage_events table for tracking AI usage and billable actions per tenant.
 
 ## Acceptance Criteria
 
 - [ ] usage_events table created
-- [ ] Indexes for common queries (org_id, created_at)
+- [ ] Indexes for common queries (tenant_id, created_at)
 - [ ] RLS policies for tenant isolation
 - [ ] Support for token counts and metadata
+- [ ] Support NULL tenant_id (users in "Personal" mode)
 - [ ] TypeScript types generated
 - [ ] Migration follows naming convention
 
@@ -30,12 +31,14 @@ Usage tracking for:
 - Billable actions (scope generation, proposal generation)
 - Audit trail
 
+**Note**: tenant_id is optional - users can work in "Personal" mode without a tenant.
+
 ### Schema
 
 ```sql
 create table public.usage_events (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid references organizations(id) on delete cascade not null,
+  tenant_id uuid references tenants(id) on delete cascade, -- NULLABLE: users can work without tenant
   user_id uuid references auth.users(id),
   action text not null, -- e.g., 'agency:scope:generate'
   module_id text, -- e.g., 'agency'
@@ -47,18 +50,18 @@ create table public.usage_events (
 );
 
 -- Indexes
-create index usage_events_org_created_idx
-  on usage_events(org_id, created_at desc);
+create index usage_events_tenant_created_idx
+  on usage_events(tenant_id, created_at desc);
 create index usage_events_action_idx
   on usage_events(action);
 
 -- RLS
 alter table usage_events enable row level security;
 
-create policy "Users can view own org usage"
+create policy "Users can view own tenant usage"
   on usage_events for select
-  using (org_id in (
-    select org_id from org_members where user_id = auth.uid()
+  using (tenant_id in (
+    select tenant_id from tenant_members where user_id = auth.uid()
   ));
 
 -- Only allow inserts via service role or authenticated
@@ -75,12 +78,12 @@ create policy "Authenticated can insert usage"
 ### Patterns to Follow
 
 - Action format: `<module>:<domain>:<verb>`
-- Always include org_id
+- tenant_id is optional (NULL for "Personal" mode users)
 - Store token counts for billing
 
 ## Dependencies
 
-- **Blocked by**: TASK-1-02 (Organizations)
+- **Blocked by**: TASK-1-02 (Tenants table)
 - **Blocks**: TASK-1-08 (recordUsage service)
 
 ## Progress Log

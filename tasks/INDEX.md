@@ -8,8 +8,8 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Completed | 4 |
-| Phase 1 | Backlog | 13 |
+| Phase 1 | Completed | 5 |
+| Phase 1 | Backlog | 12 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
 | **Total** | | **31** |
@@ -50,6 +50,7 @@
 | [TASK-1-02](completed/TASK-1-02-organizations-rls.md) | Tenants & account types + RLS | 3 |
 | [TASK-1-03](completed/TASK-1-03-org-creation-flow.md) | Account creation flows | 2 |
 | [TASK-1-04](completed/TASK-1-04-org-switcher.md) | Tenant switcher | 2 |
+| [TASK-1-05](completed/TASK-1-05-module-registry-tables.md) | Module registry tables | 2 |
 
 #### Backlog
 
@@ -62,7 +63,6 @@
 
 | ID | Title | Priority | Complexity |
 |----|-------|----------|------------|
-| [TASK-1-05](backlog/TASK-1-05-module-registry-tables.md) | Module registry tables | P1-High | 2 |
 | [TASK-1-06](backlog/TASK-1-06-module-registry-helpers.md) | Module registry helpers | P2-Medium | 2 |
 
 ### Usage Ledger

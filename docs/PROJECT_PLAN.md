@@ -153,7 +153,7 @@ appdistillery/
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| **Tables (Core)** | `public.<entity>` | `organizations`, `usage_events` |
+| **Tables (Core)** | `public.<entity>` | `tenants`, `usage_events`, `user_profiles` |
 | **Tables (Module)** | `public.<module>_<entity>` | `agency_leads`, `agency_briefs` |
 | **Usage Actions** | `<module>:<domain>:<verb>` | `agency:scope:generate` |
 | **Brain Task Types** | `<module>.<task>` | `agency.scope`, `agency.proposal` |
@@ -321,22 +321,22 @@ CREATE TABLE public.modules (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Module installations per org
+-- Module installations per tenant
 CREATE TABLE public.installations (
-  org_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE,
+  tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE,
   module_id TEXT REFERENCES public.modules(id) ON DELETE CASCADE,
   enabled BOOLEAN DEFAULT TRUE,
-  settings JSONB DEFAULT '{}',            -- Org-specific module config
+  settings JSONB DEFAULT '{}',            -- Tenant-specific module config
   installed_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (org_id, module_id)
+  PRIMARY KEY (tenant_id, module_id)
 );
 
 -- RLS
 ALTER TABLE public.installations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their org installations" ON public.installations
+CREATE POLICY "Users can view their tenant installations" ON public.installations
   FOR SELECT USING (
-    org_id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid())
+    tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid())
   );
 ```
 
@@ -375,10 +375,10 @@ export interface ModuleManifest {
 
 ```typescript
 // packages/core/modules/registry.ts
-export async function getInstalledModules(orgId: string): Promise<ModuleManifest[]>;
+export async function getInstalledModules(tenantId: string): Promise<ModuleManifest[]>;
 export async function getModuleManifest(moduleId: string): Promise<ModuleManifest | null>;
-export async function canAccessModule(orgId: string, moduleId: string): Promise<boolean>;
-export async function installModule(orgId: string, moduleId: string): Promise<void>;
+export async function canAccessModule(tenantId: string, moduleId: string): Promise<boolean>;
+export async function installModule(tenantId: string, moduleId: string): Promise<void>;
 ```
 
 ### 3.3 Usage Ledger v1
@@ -396,8 +396,8 @@ export async function installModule(orgId: string, moduleId: string): Promise<vo
 -- Usage events (append-only) — PHASE 1
 CREATE TABLE public.usage_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID REFERENCES public.organizations(id) NOT NULL,
-  user_id UUID REFERENCES public.user_profiles(id),
+  tenant_id UUID REFERENCES public.tenants(id),  -- Nullable for personal users
+  user_id UUID REFERENCES public.user_profiles(id) NOT NULL,
   module_id TEXT NOT NULL,
   action TEXT NOT NULL,                   -- e.g., 'agency:scope:generate'
   units INTEGER NOT NULL DEFAULT 1,       -- Brain Units consumed
@@ -408,20 +408,26 @@ CREATE TABLE public.usage_events (
 );
 
 -- Indexes for queries
-CREATE INDEX idx_usage_events_org_created ON public.usage_events(org_id, created_at DESC);
+CREATE INDEX idx_usage_events_tenant_created ON public.usage_events(tenant_id, created_at DESC);
+CREATE INDEX idx_usage_events_user_created ON public.usage_events(user_id, created_at DESC);
 CREATE INDEX idx_usage_events_module ON public.usage_events(module_id, created_at DESC);
 
 -- RLS
 ALTER TABLE public.usage_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their org usage" ON public.usage_events
+-- Personal users can see their own usage
+CREATE POLICY "Users can view their personal usage" ON public.usage_events
+  FOR SELECT USING (user_id = auth.uid() AND tenant_id IS NULL);
+
+-- Tenant members can view tenant usage
+CREATE POLICY "Users can view their tenant usage" ON public.usage_events
   FOR SELECT USING (
-    org_id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid())
+    tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid())
   );
 
 -- Usage pools — PHASE 3 (DEFERRED)
 -- CREATE TABLE public.usage_pools (
---   org_id UUID PRIMARY KEY REFERENCES public.organizations(id),
+--   tenant_id UUID PRIMARY KEY REFERENCES public.tenants(id),
 --   balance INTEGER NOT NULL DEFAULT 0,
 --   soft_cap INTEGER DEFAULT 5000,
 --   hard_cap INTEGER DEFAULT 10000,
@@ -435,8 +441,8 @@ CREATE POLICY "Users can view their org usage" ON public.usage_events
 ```typescript
 // packages/core/ledger/types.ts
 export interface RecordUsageInput {
-  orgId: string;
-  userId?: string;
+  tenantId?: string;  // Optional - null for personal users
+  userId: string;
   moduleId: string;
   action: string;
   units?: number;
@@ -452,11 +458,12 @@ export async function recordUsage(input: RecordUsageInput): Promise<void> {
 }
 
 export async function getUsageHistory(
-  orgId: string, 
+  tenantId: string | null,  // null for personal users
+  userId: string,
   limit?: number
 ): Promise<UsageEvent[]>;
 
-// Phase 3: export async function getUsageBalance(orgId: string): Promise<UsageBalance>;
+// Phase 3: export async function getUsageBalance(tenantId: string): Promise<UsageBalance>;
 ```
 
 ### 3.4 Brain / AI Router v1
@@ -483,7 +490,8 @@ export async function getUsageHistory(
 import { z } from 'zod';
 
 export interface BrainTask<T extends z.ZodType = z.ZodType> {
-  orgId: string;
+  tenantId?: string;          // Optional - null for personal users
+  userId: string;
   moduleId: string;
   taskType: string;           // e.g., 'agency.scope', 'agency.proposal'
   systemPrompt: string;
@@ -537,7 +545,8 @@ export async function brainHandle<T extends z.ZodType>(
     
     // Record usage to ledger
     await recordUsage({
-      orgId: task.orgId,
+      tenantId: task.tenantId,
+      userId: task.userId,
       moduleId: task.moduleId,
       action: `brain:${task.taskType}`,
       units: calculateUnits(task.taskType, tokens),
@@ -689,7 +698,8 @@ export type ProposalResult = z.infer<typeof ProposalResultSchema>;
 -- Agency leads (potential clients)
 CREATE TABLE public.agency_leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID REFERENCES public.organizations(id) NOT NULL,
+  tenant_id UUID REFERENCES public.tenants(id),  -- Nullable for personal users
+  user_id UUID REFERENCES public.user_profiles(id) NOT NULL,
   client_name TEXT NOT NULL,
   contact_email TEXT,
   contact_phone TEXT,
@@ -703,7 +713,8 @@ CREATE TABLE public.agency_leads (
 -- Agency briefs (scoped requirements)
 CREATE TABLE public.agency_briefs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID REFERENCES public.organizations(id) NOT NULL,
+  tenant_id UUID REFERENCES public.tenants(id),  -- Nullable for personal users
+  user_id UUID REFERENCES public.user_profiles(id) NOT NULL,
   lead_id UUID REFERENCES public.agency_leads(id),
   title TEXT NOT NULL,
   raw_input TEXT,                         -- Original client description
@@ -719,7 +730,8 @@ CREATE TABLE public.agency_briefs (
 -- Agency proposals
 CREATE TABLE public.agency_proposals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID REFERENCES public.organizations(id) NOT NULL,
+  tenant_id UUID REFERENCES public.tenants(id),  -- Nullable for personal users
+  user_id UUID REFERENCES public.user_profiles(id) NOT NULL,
   brief_id UUID REFERENCES public.agency_briefs(id),
   title TEXT NOT NULL,
   executive_summary TEXT,
@@ -739,14 +751,29 @@ ALTER TABLE public.agency_leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agency_briefs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agency_proposals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Org members can access leads" ON public.agency_leads
-  FOR ALL USING (org_id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid()));
+-- Personal users can access their own leads
+CREATE POLICY "Users can access their personal leads" ON public.agency_leads
+  FOR ALL USING (user_id = auth.uid() AND tenant_id IS NULL);
 
-CREATE POLICY "Org members can access briefs" ON public.agency_briefs
-  FOR ALL USING (org_id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid()));
+-- Tenant members can access tenant leads
+CREATE POLICY "Tenant members can access tenant leads" ON public.agency_leads
+  FOR ALL USING (tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid()));
 
-CREATE POLICY "Org members can access proposals" ON public.agency_proposals
-  FOR ALL USING (org_id IN (SELECT org_id FROM public.memberships WHERE user_id = auth.uid()));
+-- Personal users can access their own briefs
+CREATE POLICY "Users can access their personal briefs" ON public.agency_briefs
+  FOR ALL USING (user_id = auth.uid() AND tenant_id IS NULL);
+
+-- Tenant members can access tenant briefs
+CREATE POLICY "Tenant members can access tenant briefs" ON public.agency_briefs
+  FOR ALL USING (tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid()));
+
+-- Personal users can access their own proposals
+CREATE POLICY "Users can access their personal proposals" ON public.agency_proposals
+  FOR ALL USING (user_id = auth.uid() AND tenant_id IS NULL);
+
+-- Tenant members can access tenant proposals
+CREATE POLICY "Tenant members can access tenant proposals" ON public.agency_proposals
+  FOR ALL USING (tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid()));
 ```
 
 ### 4.6 AI Prompts
@@ -812,24 +839,35 @@ import { ScopeResultSchema } from '../schemas/brief';
 import { SCOPING_SYSTEM_PROMPT, SCOPING_USER_TEMPLATE } from '../prompts';
 
 export async function generateScope(briefId: string) {
-  const { org, user } = await getSessionContext();
+  const session = await getSessionContext();
+  if (!session) throw new Error('Unauthorized');
+
   const supabase = await createClient();
-  
+
   // 1. Fetch the brief
-  const { data: brief, error } = await supabase
+  const query = supabase
     .from('agency_briefs')
     .select('*')
     .eq('id', briefId)
-    .eq('org_id', org.id)
-    .single();
-  
+    .eq('user_id', session.user.id);
+
+  // Filter by tenant if in tenant context
+  if (session.tenant) {
+    query.eq('tenant_id', session.tenant.id);
+  } else {
+    query.is('tenant_id', null);
+  }
+
+  const { data: brief, error } = await query.single();
+
   if (error || !brief) {
     throw new Error('Brief not found');
   }
-  
+
   // 2. Call Brain with Zod schema
   const result = await brainHandle({
-    orgId: org.id,
+    tenantId: session.tenant?.id,
+    userId: session.user.id,
     moduleId: 'agency',
     taskType: 'agency.scope',
     systemPrompt: SCOPING_SYSTEM_PROMPT,
@@ -841,11 +879,11 @@ export async function generateScope(briefId: string) {
     }),
     schema: ScopeResultSchema,  // Guarantees valid output
   });
-  
+
   if (!result.success) {
     throw new Error(result.error || 'Scope generation failed');
   }
-  
+
   // 3. Update brief with analysis
   await supabase
     .from('agency_briefs')
@@ -855,7 +893,7 @@ export async function generateScope(briefId: string) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', briefId);
-  
+
   return result.data;
 }
 ```

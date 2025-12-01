@@ -16,10 +16,10 @@ Create automated tests to verify RLS policies properly isolate tenant data.
 
 ## Acceptance Criteria
 
-- [ ] Test users can only see own org data
-- [ ] Test users cannot access other org data
-- [ ] Test cross-org query attempts fail
-- [ ] Test covers organizations, org_members, usage_events
+- [ ] Test users can only see own tenant data
+- [ ] Test users cannot access other tenant data
+- [ ] Test cross-tenant query attempts fail
+- [ ] Test covers tenants, tenant_members, usage_events
 - [ ] Tests run against local Supabase
 - [ ] Documented test patterns for future tables
 
@@ -35,46 +35,46 @@ import { createClient } from '@supabase/supabase-js'
 describe('RLS Tenant Isolation', () => {
   let userAClient: SupabaseClient
   let userBClient: SupabaseClient
-  let orgAId: string
-  let orgBId: string
+  let tenantAId: string
+  let tenantBId: string
 
   beforeAll(async () => {
-    // Create two test users with their own orgs
-    // User A in Org A
-    // User B in Org B
+    // Create two test users with their own tenants
+    // User A in Tenant A
+    // User B in Tenant B
   })
 
-  describe('organizations table', () => {
-    it('user A can only see Org A', async () => {
+  describe('tenants table', () => {
+    it('user A can only see Tenant A', async () => {
       const { data } = await userAClient
-        .from('organizations')
+        .from('tenants')
         .select('*')
 
       expect(data).toHaveLength(1)
-      expect(data[0].id).toBe(orgAId)
+      expect(data[0].id).toBe(tenantAId)
     })
 
-    it('user A cannot see Org B', async () => {
+    it('user A cannot see Tenant B', async () => {
       const { data } = await userAClient
-        .from('organizations')
+        .from('tenants')
         .select('*')
-        .eq('id', orgBId)
+        .eq('id', tenantBId)
 
       expect(data).toHaveLength(0)
     })
   })
 
   describe('usage_events table', () => {
-    it('user A only sees Org A usage', async () => {
-      // Create usage events for both orgs
-      // Verify user A only sees Org A events
+    it('user A only sees Tenant A usage', async () => {
+      // Create usage events for both tenants
+      // Verify user A only sees Tenant A events
     })
 
-    it('user B cannot query Org A usage', async () => {
+    it('user B cannot query Tenant A usage', async () => {
       const { data } = await userBClient
         .from('usage_events')
         .select('*')
-        .eq('org_id', orgAId)
+        .eq('tenant_id', tenantAId)
 
       expect(data).toHaveLength(0)
     })
@@ -109,7 +109,7 @@ Requires:
 
 ## Dependencies
 
-- **Blocked by**: TASK-0-06 (Vitest), TASK-1-02 (Organizations), TASK-1-07 (Usage events)
+- **Blocked by**: TASK-0-06 (Vitest), TASK-1-02 (Tenants), TASK-1-07 (Usage events)
 - **Blocks**: None (critical security verification)
 
 ## Progress Log

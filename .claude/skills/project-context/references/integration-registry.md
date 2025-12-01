@@ -32,7 +32,7 @@ const supabase = createServerClient(...)
 const { data, error } = await supabase
   .from('table_name')
   .select()
-  .eq('org_id', sessionContext.orgId) // Always filter by org_id
+  .eq('tenant_id', session.tenant.id) // Always filter by tenant_id
 ```
 
 **Migrations:**
@@ -42,7 +42,7 @@ const { data, error } = await supabase
 
 **Never:**
 - Edit schema via Supabase Dashboard (use migrations)
-- Query without `org_id` filter
+- Query without `tenant_id` filter (for tenant data)
 - Expose `SUPABASE_SECRET_KEY` to client
 
 ---

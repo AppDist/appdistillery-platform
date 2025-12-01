@@ -16,8 +16,8 @@ Create TypeScript helpers for querying and managing module installations.
 
 ## Acceptance Criteria
 
-- [ ] getInstalledModules(orgId) helper
-- [ ] isModuleEnabled(orgId, moduleId) helper
+- [ ] getInstalledModules(tenantId) helper
+- [ ] isModuleEnabled(tenantId, moduleId) helper
 - [ ] installModule Server Action
 - [ ] uninstallModule Server Action
 - [ ] Module manifest type definition
@@ -27,24 +27,24 @@ Create TypeScript helpers for querying and managing module installations.
 Helpers for module management:
 
 ```typescript
-// Get installed modules for org
-export async function getInstalledModules(orgId: string) {
+// Get installed modules for tenant
+export async function getInstalledModules(tenantId: string) {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('org_modules')
+    .from('tenant_modules')
     .select('*, module:modules(*)')
-    .eq('org_id', orgId)
+    .eq('tenant_id', tenantId)
     .eq('enabled', true)
   return data
 }
 
 // Check if module is enabled
-export async function isModuleEnabled(orgId: string, moduleId: string) {
+export async function isModuleEnabled(tenantId: string, moduleId: string) {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('org_modules')
+    .from('tenant_modules')
     .select('enabled')
-    .eq('org_id', orgId)
+    .eq('tenant_id', tenantId)
     .eq('module_id', moduleId)
     .single()
   return data?.enabled ?? false
@@ -80,7 +80,7 @@ export interface ModuleManifest {
 
 - Export helpers from packages/core
 - Use Supabase server client
-- Include org_id in all queries
+- Include tenant_id in all queries
 
 ## Dependencies
 

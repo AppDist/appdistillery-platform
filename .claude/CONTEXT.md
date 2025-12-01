@@ -55,7 +55,8 @@ These are hard rules. Violating them breaks the architecture:
 import { brainHandle } from '@appdistillery/core/brain';
 
 const result = await brainHandle({
-  orgId: string,
+  tenantId?: string,          // Optional - null for personal users
+  userId: string,
   moduleId: string,
   taskType: string,           // e.g., 'agency.scope'
   systemPrompt: string,
@@ -70,7 +71,8 @@ const result = await brainHandle({
 import { recordUsage } from '@appdistillery/core/ledger';
 
 await recordUsage({
-  orgId: string,
+  tenantId?: string,          // Optional - null for personal users
+  userId: string,
   moduleId: string,
   action: string,             // e.g., 'agency:scope:generate'
   units: number,
@@ -85,7 +87,7 @@ await recordUsage({
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| **Core tables** | `public.<entity>` | `organizations`, `usage_events` |
+| **Core tables** | `public.<entity>` | `tenants`, `usage_events`, `user_profiles` |
 | **Module tables** | `public.<module>_<entity>` | `agency_leads`, `agency_briefs` |
 | **Usage actions** | `<module>:<domain>:<verb>` | `agency:scope:generate` |
 | **Brain task types** | `<module>.<task>` | `agency.scope`, `agency.proposal` |
@@ -162,38 +164,48 @@ import { ScopeResultSchema } from '../schemas/brief';
 import { SCOPING_SYSTEM_PROMPT, SCOPING_USER_TEMPLATE } from '../prompts';
 
 export async function generateScope(briefId: string) {
-  // 1. Get session context (includes org)
-  const { org } = await getSessionContext();
+  // 1. Get session context
+  const session = await getSessionContext();
+  if (!session) throw new Error('Unauthorized');
+
   const supabase = await createClient();
-  
-  // 2. Fetch data with org_id filter
-  const { data: brief } = await supabase
+
+  // 2. Fetch data with tenant/user filter
+  const query = supabase
     .from('agency_briefs')
     .select('*')
     .eq('id', briefId)
-    .eq('org_id', org.id)  // Always filter by org!
-    .single();
-  
+    .eq('user_id', session.user.id);
+
+  // Filter by tenant if in tenant context
+  if (session.tenant) {
+    query.eq('tenant_id', session.tenant.id);
+  } else {
+    query.is('tenant_id', null);  // Personal user mode
+  }
+
+  const { data: brief } = await query.single();
   if (!brief) throw new Error('Brief not found');
-  
+
   // 3. Call Brain with Zod schema (NOT raw prompts)
   const result = await brainHandle({
-    orgId: org.id,
+    tenantId: session.tenant?.id,
+    userId: session.user.id,
     moduleId: 'agency',
     taskType: 'agency.scope',
     systemPrompt: SCOPING_SYSTEM_PROMPT,
     userPrompt: SCOPING_USER_TEMPLATE({ /* ... */ }),
     schema: ScopeResultSchema,  // Guarantees typed output
   });
-  
+
   if (!result.success) throw new Error(result.error);
-  
+
   // 4. Update database
   await supabase
     .from('agency_briefs')
     .update({ ai_analysis: result.data, status: 'analyzed' })
     .eq('id', briefId);
-  
+
   return result.data;  // Typed as ScopeResult
 }
 ```
@@ -203,9 +215,14 @@ export async function generateScope(briefId: string) {
 ## RLS Pattern
 
 ```sql
-CREATE POLICY "org_isolation" ON public.table_name
+-- For personal user data
+CREATE POLICY "personal_isolation" ON public.table_name
+  FOR ALL USING (user_id = auth.uid() AND tenant_id IS NULL);
+
+-- For tenant data
+CREATE POLICY "tenant_isolation" ON public.table_name
   FOR ALL USING (
-    org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid())
+    tenant_id IN (SELECT tenant_id FROM public.tenant_members WHERE user_id = auth.uid())
   );
 ```
 
@@ -213,8 +230,8 @@ CREATE POLICY "org_isolation" ON public.table_name
 
 ## Quick Checklist (Before Committing)
 
-- [ ] All data queries include `org_id` filter
-- [ ] RLS policies exist on new tables
+- [ ] All data queries include `tenant_id` and `user_id` filters
+- [ ] RLS policies exist on new tables (personal + tenant isolation)
 - [ ] Brain calls use `brainHandle()` + Zod schema
 - [ ] Billable actions use `recordUsage()`
 - [ ] Zod schemas imported, not duplicated

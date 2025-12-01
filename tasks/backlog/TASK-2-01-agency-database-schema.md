@@ -31,7 +31,7 @@ This epic covers all database work for the Agency module. Will be decomposed int
 ## Acceptance Criteria (Epic Level)
 
 - [ ] All Agency tables created with proper foreign keys
-- [ ] RLS policies enforce org_id tenant isolation
+- [ ] RLS policies enforce tenant_id tenant isolation
 - [ ] TypeScript types generated and exported
 - [ ] Tables follow naming convention (agency_*)
 - [ ] Migrations are reversible
@@ -44,7 +44,7 @@ Agency module tables:
 -- agency_leads: Client/project intake
 create table public.agency_leads (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid references organizations(id) not null,
+  tenant_id uuid references tenants(id) not null,
   client_name text not null,
   project_description text,
   budget_range text,
@@ -57,7 +57,7 @@ create table public.agency_leads (
 -- agency_briefs: AI-generated scope from lead
 create table public.agency_briefs (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid references organizations(id) not null,
+  tenant_id uuid references tenants(id) not null,
   lead_id uuid references agency_leads(id),
   scope jsonb not null, -- AI-generated structured scope
   created_at timestamptz default now()
@@ -66,7 +66,7 @@ create table public.agency_briefs (
 -- agency_proposals: Generated proposals
 create table public.agency_proposals (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid references organizations(id) not null,
+  tenant_id uuid references tenants(id) not null,
   brief_id uuid references agency_briefs(id),
   content jsonb not null, -- Proposal sections
   status text default 'draft',
@@ -77,15 +77,15 @@ create table public.agency_proposals (
 
 ### Patterns to Follow
 
-- All tables include org_id (never omit)
-- RLS policies check org_members for access
+- All tables include tenant_id (never omit)
+- RLS policies check tenant_members for access
 - Use timestamptz for dates
 - jsonb for structured AI output
 - Naming: agency_<entity>
 
 ## Dependencies
 
-- **Blocked by**: TASK-1-02 (Organizations RLS)
+- **Blocked by**: TASK-1-02 (Tenants RLS)
 - **Blocks**: TASK-2-02 (AI capabilities), TASK-2-03 (UI)
 
 ## Progress Log

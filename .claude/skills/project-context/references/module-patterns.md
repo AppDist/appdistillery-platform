@@ -10,7 +10,7 @@
 | Return raw JSON from AI prompts | Use `generateObject` with Zod schema |
 | Duplicate Zod schemas | Import from `modules/*/schemas/` |
 | Import across modules | Use Core services or events |
-| Query without org_id | Always filter by `org_id` |
+| Query without tenant_id/user_id | Always filter by `tenant_id` and/or `user_id` |
 | Import server code in client components | Use client-safe subpath exports |
 
 ## Auth Import Pattern (TASK-1-01, TASK-1-02)
@@ -78,7 +78,7 @@ if (session.tenant) {
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| Core tables | `public.<entity>` | `organizations`, `usage_events`, `user_profiles` |
+| Core tables | `public.<entity>` | `tenants`, `usage_events`, `user_profiles` |
 | Module tables | `public.<module>_<entity>` | `agency_leads`, `agency_briefs`, `agency_proposals` |
 
 ### Usage Actions
@@ -138,18 +138,20 @@ export async function generateScope(input: unknown) {
 
   // 4. Record usage
   await recordUsage({
-    orgId: session.orgId,
+    tenantId: session.tenant?.id,
+    userId: session.user.id,
     action: 'agency:scope:generate',
     tokens: result.usage.totalTokens,
     cost: 50, // Brain Units
   })
 
-  // 5. Save to database with org_id
+  // 5. Save to database with tenant_id and user_id
   const supabase = createServerClient(...)
   await supabase
     .from('agency_briefs')
     .insert({
-      org_id: session.orgId,
+      tenant_id: session.tenant?.id,
+      user_id: session.user.id,
       lead_id: validated.leadId,
       scope: result.output,
     })
@@ -218,17 +220,25 @@ export const agencyManifest: ModuleManifest = {
 ## Tenant Isolation Pattern
 
 ```typescript
-// Always filter by org_id
+// Personal user: filter by user_id, tenant_id IS NULL
 const { data } = await supabase
   .from('agency_leads')
   .select('*')
-  .eq('org_id', session.orgId) // Required!
+  .eq('user_id', session.user.id)
+  .is('tenant_id', null)
 
-// For inserts
+// Tenant user: filter by tenant_id
+const { data } = await supabase
+  .from('agency_leads')
+  .select('*')
+  .eq('tenant_id', session.tenant.id)
+
+// For inserts (works for both personal and tenant)
 await supabase
   .from('agency_leads')
   .insert({
-    org_id: session.orgId, // Required!
+    tenant_id: session.tenant?.id, // null for personal users
+    user_id: session.user.id,      // Always required
     ...leadData,
   })
 
@@ -242,8 +252,8 @@ import { recordUsage } from '@appdistillery/core/ledger'
 
 // After any billable AI operation
 await recordUsage({
-  orgId: session.orgId,
-  userId: session.userId,
+  tenantId: session.tenant?.id, // null for personal users
+  userId: session.user.id,
   action: 'agency:scope:generate',
   tokens: result.usage.totalTokens,
   inputTokens: result.usage.promptTokens,
@@ -325,7 +335,7 @@ import { something } from '@/modules/other-module'
 import { brainHandle } from '@appdistillery/core/brain'
 ```
 
-### Wrong: Missing org_id
+### Wrong: Missing tenant_id/user_id
 ```typescript
 // Dangerous: no tenant isolation
 await supabase.from('leads').select('*')
@@ -333,5 +343,16 @@ await supabase.from('leads').select('*')
 
 ### Correct: Always filter
 ```typescript
-await supabase.from('leads').select('*').eq('org_id', orgId)
+// For personal users
+await supabase
+  .from('leads')
+  .select('*')
+  .eq('user_id', userId)
+  .is('tenant_id', null)
+
+// For tenant users
+await supabase
+  .from('leads')
+  .select('*')
+  .eq('tenant_id', tenantId)
 ```
