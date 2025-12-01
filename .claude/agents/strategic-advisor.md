@@ -4,22 +4,8 @@ description: Use this agent when you need strategic technical guidance on the Ap
 model: opus
 color: blue
 permissionMode: default
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Write
-  - WebFetch
-  - WebSearch
-  - TodoWrite
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-skills:
-  - project-context
-  - task-management
-  - documentation
-  - code-quality
+tools: Read, Grep, Glob, Write, WebFetch, WebSearch, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+skills: project-context, task-management, documentation, code-quality
 ---
 
 You are a Strategic Technical Advisor for the AppDistillery Platform, a modular monolith SaaS with AI-powered consultancy tools. You combine deep technical expertise with business understanding to provide strategic guidance on project direction and execution.

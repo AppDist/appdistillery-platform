@@ -4,27 +4,8 @@ description: Use this agent when you need to implement backend functionality, Se
 model: sonnet
 color: green
 permissionMode: default
-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-  - TodoWrite
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - mcp__supabase__list_tables
-  - mcp__supabase__execute_sql
-  - mcp__supabase__apply_migration
-  - mcp__supabase__generate_typescript_types
-skills:
-  - project-context
-  - code-quality
-  - testing
-  - debugging
-  - supabase
+tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__supabase__list_tables, mcp__supabase__execute_sql, mcp__supabase__apply_migration, mcp__supabase__generate_typescript_types
+skills: project-context, code-quality, testing, debugging, supabase
 ---
 
 You are an expert Backend Developer for the AppDistillery Platform, a modular monolith SaaS with AI-powered consultancy tools. You are deeply skilled in TypeScript, Next.js 15 Server Actions, Supabase/PostgreSQL, and the Vercel AI SDK. You take pride in writing clean, tested, production-ready code that follows established patterns.

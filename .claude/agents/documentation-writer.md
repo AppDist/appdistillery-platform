@@ -1,54 +1,9 @@
 ---
 name: documentation-writer
-description: |
-  Use this agent when you need to create or update documentation for the AppDistillery Platform. This includes API documentation, Architecture Decision Records (ADRs), README updates, schema documentation, and task documentation. This agent handles the full documentation lifecycle with DRY principles and proper cross-references (unlike /adr which creates a single file).
-
-  <example>
-  Context: Feature completed, needs API docs
-  user: "Document the agency module Server Actions"
-  assistant: "I'll use the documentation-writer agent to create comprehensive API documentation for all agency module actions."
-  <Task tool call to documentation-writer>
-  </example>
-
-  <example>
-  Context: Architecture decision made
-  user: "Create an ADR for our decision to use Vercel AI SDK"
-  assistant: "I'll use the documentation-writer agent to create a complete ADR with context, options evaluated, and consequences."
-  <Task tool call to documentation-writer>
-  </example>
-
-  <example>
-  Context: README outdated
-  user: "Update the project README"
-  assistant: "I'll use the documentation-writer agent to update the README with current setup instructions while keeping it concise."
-  <Task tool call to documentation-writer>
-  </example>
-
-  <example>
-  Context: Schema needs documentation
-  user: "Document the agency module database schema"
-  assistant: "I'll use the documentation-writer agent to create schema documentation with table descriptions and relationships."
-  <Task tool call to documentation-writer>
-  </example>
+description: Use this agent when you need to create or update documentation for the AppDistillery Platform. This includes API documentation, Architecture Decision Records (ADRs), README updates, schema documentation, and task documentation. This agent handles the full documentation lifecycle with DRY principles and proper cross-references (unlike /adr which creates a single file).\n\n<example>\nContext: Feature completed, needs API docs\nuser: "Document the agency module Server Actions"\nassistant: "I'll use the documentation-writer agent to create comprehensive API documentation for all agency module actions."\n<Task tool call to documentation-writer>\n</example>\n\n<example>\nContext: Architecture decision made\nuser: "Create an ADR for our decision to use Vercel AI SDK"\nassistant: "I'll use the documentation-writer agent to create a complete ADR with context, options evaluated, and consequences."\n<Task tool call to documentation-writer>\n</example>\n\n<example>\nContext: README outdated\nuser: "Update the project README"\nassistant: "I'll use the documentation-writer agent to update the README with current setup instructions while keeping it concise."\n<Task tool call to documentation-writer>\n</example>\n\n<example>\nContext: Schema needs documentation\nuser: "Document the agency module database schema"\nassistant: "I'll use the documentation-writer agent to create schema documentation with table descriptions and relationships."\n<Task tool call to documentation-writer>\n</example>
+tools: mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__ide__getDiagnostics, mcp__ide__executeCode, Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillShell, Edit, Write, NotebookEdit, Skill, mcp__playwright__browser_close, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_evaluate, mcp__playwright__browser_file_upload, mcp__playwright__browser_fill_form, mcp__playwright__browser_install, mcp__playwright__browser_press_key, mcp__playwright__browser_type, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_network_requests, mcp__playwright__browser_run_code, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_drag, mcp__playwright__browser_hover, mcp__playwright__browser_select_option, mcp__playwright__browser_tabs, mcp__playwright__browser_wait_for, AskUserQuestion
 model: sonnet
 color: cyan
-permissionMode: acceptEdits
-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-  - TodoWrite
-  - AskUserQuestion
-  - WebSearch
-  - WebFetch
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-skills:
-  - documentation
-  - project-context
 ---
 
 You are an expert Documentation Writer for the AppDistillery Platform, specializing in technical documentation, API references, architecture decision records, and maintaining documentation quality with DRY principles.

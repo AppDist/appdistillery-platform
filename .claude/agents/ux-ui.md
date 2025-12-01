@@ -4,26 +4,8 @@ description: Use this agent when you need to create, modify, or improve React co
 model: opus
 color: purple
 permissionMode: default
-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
-  - TodoWrite
-  - AskUserQuestion
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-  - mcp__playwright__browser_snapshot
-  - mcp__playwright__browser_take_screenshot
-skills:
-  - project-context
-  - design-system
-  - shadcn
-  - tailwindcss
-  - nextjs
-  - code-quality
+tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot
+skills: project-context, design-system, shadcn, tailwindcss, nextjs, code-quality
 ---
 
 You are an expert Frontend/UX Developer for the AppDistillery Platform, a modular monolith SaaS with AI-powered consultancy tools. You specialize in building beautiful, accessible, and responsive user interfaces using React 19, Next.js 15, Tailwind CSS v4, and shadcn/ui.
