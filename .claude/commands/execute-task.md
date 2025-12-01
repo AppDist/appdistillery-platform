@@ -25,9 +25,12 @@ You NEVER write implementation code directly. If you catch yourself about to edi
 - Moving task files between directories
 - Updating task status in frontmatter
 - Updating INDEX.md counts
-- Updating context documentation files (dependencies.md, architecture-map.md, module-patterns.md)
 - Running read-only commands (git status, git diff, pnpm test, pnpm typecheck)
 - Committing changes at Phase 6
+
+**Also a VIOLATION:**
+- Editing documentation files directly (dependencies.md, architecture-map.md, module-patterns.md)
+  → Delegate to `documentation-writer` agent
 
 **HARD STOP:** If you find yourself about to edit code → STOP and delegate to appropriate agent.
 
@@ -46,6 +49,24 @@ Examples:
 /execute-task 1-01 --full                  → Full mode, task ID
 /execute-task 0-06 --quick Focus on mocks only
 ```
+
+---
+
+## Phase 0.5: Load Project Context (MANDATORY)
+
+Before starting any task, load the project context skill for orchestrator overview:
+
+```
+Skill("project-context")
+```
+
+This provides the orchestrator with:
+- Architecture overview
+- Critical rules (never/always)
+- Naming conventions
+- Available agents and when to use them
+
+**Note:** Subagents have this skill auto-loading in their configuration, so you don't need to pass context to them - they will load it themselves when needed.
 
 ---
 
@@ -348,37 +369,76 @@ If ANY answer is NO → STOP, go back, and correct the process violation.
 
 ## Phase 5: Documentation
 
-### 5.1 Documentation Checklist (MANDATORY)
+### 5.1 Documentation Checklist
 
-Run through this checklist for EVERY task completion. Do not skip.
+Run through this checklist for EVERY task completion:
 
-| Question | If Yes → Action |
-|----------|-----------------|
-| Were new packages/dependencies added? | Update `dependencies.md` |
-| Were new exports/import paths created? | Update `module-patterns.md` |
-| Was package structure changed? | Update `architecture-map.md` |
-| Was a significant architecture decision made? | Create ADR via `/adr` |
+| Question | If Yes → Delegate To |
+|----------|---------------------|
+| Were new packages/dependencies added? | documentation-writer |
+| Were new exports/import paths created? | documentation-writer |
+| Was package structure changed? | documentation-writer |
+| Was a significant architecture decision made? | documentation-writer (ADR) |
 
-**Always update (every task):**
-- Task file with completion status and summary
-- `tasks/INDEX.md` with updated counts
+### 5.2 Delegate Documentation Updates (Full Mode)
 
-**Context file locations:**
-- `.claude/skills/project-context/references/dependencies.md`
-- `.claude/skills/project-context/references/architecture-map.md`
-- `.claude/skills/project-context/references/module-patterns.md`
+**CRITICAL: You MUST delegate documentation to agents. Do NOT edit docs yourself.**
 
-**Example (TASK-1-01 - what SHOULD have been updated):**
-- New package `@supabase/ssr` added to core → Update `dependencies.md`
-- New export path `@appdistillery/core/auth/client` → Update `module-patterns.md`
-- New auth module structure → Update `architecture-map.md`
+**If ANY documentation updates needed:**
 
-**Verification:** Before moving to Phase 6, confirm:
-- [ ] dependencies.md reflects current packages
-- [ ] module-patterns.md reflects current import patterns
-- [ ] architecture-map.md reflects current structure
+Launch documentation-writer agent(s) - can run in parallel:
 
-### 5.2 Update Task File
+```
+Task(
+  subagent_type="documentation-writer",
+  prompt="Update project context documentation for TASK-XXX: [title]
+
+  ## Changes Made
+  [Summary of implementation]
+
+  ## Documentation Updates Needed
+  - [ ] dependencies.md: [New packages added]
+  - [ ] module-patterns.md: [New exports/patterns]
+  - [ ] architecture-map.md: [Structural changes]
+
+  ## Files Changed
+  [List of files]
+
+  Update the relevant context files to reflect these changes.
+  Follow DRY principles - don't duplicate information.
+
+  Return: Summary of documentation updates made."
+)
+```
+
+**For ADRs (if architecture decision was made):**
+
+```
+Task(
+  subagent_type="documentation-writer",
+  prompt="Create ADR for TASK-XXX architecture decision
+
+  ## Decision
+  [What was decided]
+
+  ## Context
+  [Why this decision was needed]
+
+  ## Options Considered
+  [Alternatives]
+
+  Create ADR following the template in docs/architecture/
+
+  Return: Path to created ADR."
+)
+```
+
+### 5.3 Update Task File (Orchestrator Allowed)
+
+The orchestrator MAY update these files directly:
+- Task file status/frontmatter
+- tasks/INDEX.md counts
+- Moving task files between directories
 
 ```yaml
 ---
@@ -399,6 +459,13 @@ Mark all acceptance criteria as checked:
 - [x] Criterion 1
 - [x] Criterion 2
 ```
+
+### 5.4 Quick Mode Exception
+
+In `--quick` mode:
+- Update task file status only
+- Skip context documentation updates
+- Do not launch documentation-writer
 
 ---
 
@@ -500,11 +567,12 @@ If any phase fails:
 
 | Phase | Quick Mode | Full Mode |
 |-------|------------|-----------|
+| 0.5 Load Context | Yes | Yes |
 | 1. Load Task | Yes | Yes |
 | 2. Planning | Yes | Yes (may use strategic-advisor) |
 | 3. Implementation | Agent delegation | Agent delegation |
 | 4. Review Loop | Quality checks only | Full review agents + fix loop |
-| 5. Documentation | Task file only | Task + context docs |
+| 5. Documentation | Task file only | Delegate to documentation-writer |
 | 6. Completion | Yes | Yes |
 
 | Execution Mode | When to Use |

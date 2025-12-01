@@ -4,8 +4,10 @@ title: Tenants & account types + RLS
 priority: P1-High
 complexity: 3
 module: database
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+started: 2025-12-01
+completed: 2025-12-01
 ---
 
 # TASK-1-02: Tenants & account types + RLS
@@ -24,14 +26,14 @@ Create identity tables supporting three account types: Personal (individual), Ho
 
 ## Acceptance Criteria
 
-- [ ] user_profiles table (extends auth.users)
-- [ ] tenants table (for households + organizations)
-- [ ] tenant_members junction table
-- [ ] RLS policies enforce tenant isolation
-- [ ] Personal users work without tenant
-- [ ] Usage can be tracked per-user OR per-tenant
-- [ ] TypeScript types generated
-- [ ] Migration follows naming convention
+- [x] user_profiles table (extends auth.users)
+- [x] tenants table (for households + organizations)
+- [x] tenant_members junction table
+- [x] RLS policies enforce tenant isolation
+- [x] Personal users work without tenant
+- [x] Usage can be tracked per-user OR per-tenant
+- [x] TypeScript types generated
+- [x] Migration follows naming convention
 
 ## Technical Notes
 
@@ -157,3 +159,31 @@ export interface TenantMember {
 |------|--------|
 | 2024-11-30 | Task created |
 | 2024-11-30 | Updated: Added Personal/Household/Organization account types |
+| 2025-12-01 | Completed: Full implementation with migration, TypeScript types, and RLS policies |
+
+## Implementation Summary
+
+### Files Created/Modified
+
+**Database Migration:**
+- `supabase/migrations/20251201141133_create_identity_tables.sql` - Complete migration with tables, RLS, triggers
+
+**TypeScript Types:**
+- `packages/core/src/auth/types.ts` - UserProfile, Tenant, TenantMember, TenantMembership types
+- `packages/core/src/auth/get-user-tenants.ts` - Query helper for fetching user's tenants
+- `packages/core/src/auth/index.ts` - Updated with real DB queries for getSessionContext
+
+### Security Features
+
+- RLS enabled on all tables (user_profiles, tenants, tenant_members)
+- Privilege escalation protection (admins cannot self-promote to owner)
+- Owner protection trigger (prevents orphaned tenants)
+- SECURITY DEFINER functions with proper search_path
+- Service role bypass for Server Actions
+
+### Key Patterns
+
+- Personal users: `tenant = null, membership = null`
+- Tenant users: Both populated with first tenant by `joined_at DESC`
+- Auto-created user_profiles on auth.users signup via trigger
+- `create_tenant_with_owner()` helper function for tenant creation

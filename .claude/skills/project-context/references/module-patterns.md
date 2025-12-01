@@ -13,7 +13,7 @@
 | Query without org_id | Always filter by `org_id` |
 | Import server code in client components | Use client-safe subpath exports |
 
-## Auth Import Pattern (TASK-1-01)
+## Auth Import Pattern (TASK-1-01, TASK-1-02)
 
 **CRITICAL:** Client components cannot import server-only code. Use the correct subpath.
 
@@ -21,7 +21,15 @@
 ```typescript
 import {
   createServerSupabaseClient,
-  getSessionContext
+  getSessionContext,
+  getUserTenants,
+  // Types
+  type UserProfile,
+  type Tenant,
+  type TenantMember,
+  type TenantMembership,
+  type TenantType,
+  type MemberRole,
 } from '@appdistillery/core/auth'
 ```
 
@@ -40,6 +48,26 @@ import {
 **Middleware:**
 ```typescript
 import { updateSession } from '@appdistillery/core/auth'
+```
+
+**Session Context (TASK-1-02):**
+```typescript
+// Returns null if not authenticated, otherwise:
+// - user: UserProfile (always populated)
+// - tenant: Tenant | null (null for personal users)
+// - membership: TenantMember | null (null for personal users)
+const session = await getSessionContext()
+
+if (!session) {
+  // Not authenticated
+}
+
+if (session.tenant) {
+  // Tenant user (household or organization)
+  console.log(session.tenant.type) // 'household' | 'organization'
+} else {
+  // Personal user (no tenant)
+}
 ```
 
 ## Naming Conventions

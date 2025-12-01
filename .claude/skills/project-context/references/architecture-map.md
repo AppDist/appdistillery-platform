@@ -32,22 +32,39 @@ The `@appdistillery/core` package exports four distinct services:
 
 ### 1. Auth (`@appdistillery/core/auth`)
 
-**Supabase SSR Integration (TASK-1-01):**
+**Supabase SSR Integration (TASK-1-01, TASK-1-02):**
 - `createBrowserSupabaseClient()` - Browser client for Client Components
 - `createServerSupabaseClient()` - Server client for Server Components/Actions
 - `updateSession()` - Middleware helper for session refresh
 - `getAuthErrorMessage()` - Sanitizes Supabase errors for display
-- `getSessionContext()` - Returns user/org/membership (placeholder org data until TASK-1-02)
+- `getSessionContext()` - Returns user/tenant/membership (real DB queries)
+- `getUserTenants()` - Fetches all tenants for authenticated user
 
 **Subpath Exports:**
 - `@appdistillery/core/auth` - Full auth module (server-safe)
 - `@appdistillery/core/auth/client` - Client-safe exports only (no server-only imports)
 
+**Types (TASK-1-02):**
+- `UserProfile` - User identity (id, displayName, email, avatarUrl)
+- `Tenant` - Household or organization (type, name, slug, settings)
+- `TenantMember` - Membership (tenantId, userId, role, joinedAt)
+- `TenantMembership` - Combined tenant + member info
+- `TenantType` - 'household' | 'organization'
+- `MemberRole` - 'owner' | 'admin' | 'member'
+
+**Account Types:**
+| Type | Description | Tenant Required |
+|------|-------------|-----------------|
+| Personal | Individual user | No (tenant = null) |
+| Household | Shared family/friends | Yes (type: household) |
+| Organization | Business account | Yes (type: organization) |
+
 **Core Features:**
-- User profiles and organizations
+- User profiles extending auth.users
+- Tenants for households and organizations
 - Memberships with roles (owner, admin, member)
-- Session context management
-- RLS policy enforcement helpers
+- Session context with user/tenant/membership
+- RLS policy enforcement at database level
 
 ### 2. Brain (`@appdistillery/core/brain`)
 - AI router - single entry point for all LLM calls
