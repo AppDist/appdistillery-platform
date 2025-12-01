@@ -8,7 +8,8 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Backlog | 17 |
+| Phase 1 | Completed | 1 |
+| Phase 1 | Backlog | 16 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
 | **Total** | | **31** |
@@ -41,9 +42,16 @@
 
 ### Identity & Tenancy
 
+#### Completed
+
+| ID | Title | Complexity |
+|----|-------|------------|
+| [TASK-1-01](completed/TASK-1-01-supabase-auth.md) | Supabase Auth integration | 3 |
+
+#### Backlog
+
 | ID | Title | Priority | Complexity |
 |----|-------|----------|------------|
-| [TASK-1-01](backlog/TASK-1-01-supabase-auth.md) | Supabase Auth integration | P1-High | 3 |
 | [TASK-1-02](backlog/TASK-1-02-organizations-rls.md) | Tenants & account types + RLS | P1-High | 3 |
 | [TASK-1-03](backlog/TASK-1-03-org-creation-flow.md) | Account creation flows | P1-High | 2 |
 | [TASK-1-04](backlog/TASK-1-04-org-switcher.md) | Tenant switcher | P2-Medium | 2 |

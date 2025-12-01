@@ -11,6 +11,28 @@ argument-hint: <task-id-or-path> [--quick|--full] [extra-context]
 
 ---
 
+## ORCHESTRATOR ROLE ENFORCEMENT
+
+You NEVER write implementation code directly. If you catch yourself about to edit source files, STOP.
+
+**VIOLATIONS (never do these):**
+- Using Edit/Write tools on source files (*.ts, *.tsx, *.css, etc.)
+- Running Bash commands that modify code
+- Fixing TypeScript errors directly
+- Making "small fixes" without delegating
+
+**ALLOWED actions:**
+- Moving task files between directories
+- Updating task status in frontmatter
+- Updating INDEX.md counts
+- Updating context documentation files (dependencies.md, architecture-map.md, module-patterns.md)
+- Running read-only commands (git status, git diff, pnpm test, pnpm typecheck)
+- Committing changes at Phase 6
+
+**HARD STOP:** If you find yourself about to edit code → STOP and delegate to appropriate agent.
+
+---
+
 ## Phase 0: Parse Arguments
 
 Parse the input to extract:
@@ -189,14 +211,29 @@ Task(
 )
 ```
 
-**For parallel steps:**
-Launch all parallel steps in a SINGLE message with multiple Task calls:
+**For parallel steps (MANDATORY VERIFICATION):**
 
+CRITICAL: You MUST launch parallel steps in a SINGLE message with MULTIPLE Task calls.
+
+**Before sending, verify:**
+- Count of Task() calls in your message: [N]
+- Expected from plan (steps marked "parallel"): [N]
+- If mismatch → STOP and restructure your message
+
+**CORRECT example (two parallel calls in ONE message):**
 ```
-Task(subagent_type="appdistillery-developer", prompt="Implement backend...")
-Task(subagent_type="ux-ui", prompt="Create component...")
-Task(subagent_type="test-engineer", prompt="Write tests...")
+<your_message>
+Task(subagent_type="ux-ui", prompt="Create login page...")
+Task(subagent_type="ux-ui", prompt="Create signup page...")
+</your_message>
 ```
+
+**WRONG example (single call doing multiple things):**
+```
+Task(subagent_type="ux-ui", prompt="Create login AND signup pages...")
+```
+
+The wrong example executes sequentially even though the plan said parallel!
 
 ### 3.3 Track Progress
 
@@ -219,6 +256,15 @@ pnpm test && pnpm typecheck && pnpm build
 
 If failures occur, proceed to Review Loop (Phase 4) to diagnose and fix.
 
+### CHECKPOINT: Before Phase 4
+
+**STOP and verify before proceeding:**
+- [ ] Did I delegate ALL implementation to agents? (not edit code myself)
+- [ ] Did parallel steps use SINGLE message with multiple Task() calls?
+- [ ] Did I avoid implementing/fixing code directly?
+
+If ANY answer is NO → STOP, identify the violation, and correct by delegating to agents.
+
 ---
 
 ## Phase 4: Review Loop
@@ -240,61 +286,97 @@ Aggregate findings from all review agents:
 - **Warning**: Should fix or justify
 - **Suggestion**: Consider for improvement
 
-### 4.3 Fix Loop (if findings exist)
+### 4.3 Fix Loop (MANDATORY STRUCTURE)
 
-**If Critical or Warning findings exist:**
+**If Critical or Warning findings exist, follow this EXACT process:**
 
-1. **Plan fixes** - Determine which agent(s) handle each finding:
-   ```markdown
-   | Finding | Severity | Fix Agent | Mode |
-   |---------|----------|-----------|------|
-   | [Issue 1] | Critical | appdistillery-developer | sequential |
-   | [Issue 2] | Warning | ux-ui | parallel |
-   | [Issue 3] | Warning | test-engineer | parallel |
-   ```
+**Step 1: Create Fix Plan Table (REQUIRED)**
 
-2. **Execute fixes** - Delegate to appropriate agents (sequential/parallel per plan)
+You MUST create this table before fixing anything:
 
-3. **Re-run quality checks**:
-   ```bash
-   pnpm test && pnpm typecheck && pnpm build
-   ```
+```markdown
+| # | Finding | Severity | Agent | Mode | Status |
+|---|---------|----------|-------|------|--------|
+| 1 | [Issue description] | Critical | [agent-name] | sequential | pending |
+| 2 | [Issue description] | Warning | [agent-name] | parallel | pending |
+| 3 | [Issue description] | Warning | [agent-name] | parallel | pending |
+```
 
-4. **New review round** - Return to 4.1
+**Step 2: Execute Fixes Per Table**
 
-**Continue loop until:**
+- Sequential fixes: One Task() call at a time
+- Parallel fixes: SINGLE message with multiple Task() calls (same rule as Phase 3)
+- Update status to "completed" after each fix completes
+- NEVER fix code directly - always delegate to agents
+
+**Step 3: Re-run Quality Checks (MANDATORY)**
+
+```bash
+pnpm test && pnpm typecheck && pnpm build
+```
+
+**Step 4: Re-review Decision (MANDATORY)**
+
+If ANY Critical or High-severity findings were fixed → You MUST return to 4.1 for a new review round.
+
+DO NOT SKIP re-review. Fixes can introduce regressions that only review agents catch.
+
+**Exit Criteria (ALL must be true):**
 - No Critical findings remain
 - All Warning findings fixed or justified
 - Quality checks pass
+- If fixes were made to Critical/High issues, re-review completed
 
 ### 4.4 Quick Mode Exception
 
 In `--quick` mode, skip the full review loop:
 - Run quality checks only (`pnpm test && pnpm typecheck && pnpm build`)
-- Fix any failures directly
+- Fix any failures by delegating to appropriate agent (never fix directly)
 - Do not launch review agents
+
+### CHECKPOINT: Before Phase 5
+
+**STOP and verify before proceeding:**
+- [ ] Did I create a fix plan table before fixing?
+- [ ] Did I delegate ALL fixes to agents (not fix directly)?
+- [ ] Did parallel fixes use SINGLE message with multiple Task() calls?
+- [ ] Did I re-review after Critical/High fixes?
+
+If ANY answer is NO → STOP, go back, and correct the process violation.
 
 ---
 
 ## Phase 5: Documentation
 
-### 5.1 Document Changes
+### 5.1 Documentation Checklist (MANDATORY)
 
-After review loop completes, update documentation:
+Run through this checklist for EVERY task completion. Do not skip.
 
-**Always update:**
+| Question | If Yes → Action |
+|----------|-----------------|
+| Were new packages/dependencies added? | Update `dependencies.md` |
+| Were new exports/import paths created? | Update `module-patterns.md` |
+| Was package structure changed? | Update `architecture-map.md` |
+| Was a significant architecture decision made? | Create ADR via `/adr` |
+
+**Always update (every task):**
 - Task file with completion status and summary
 - `tasks/INDEX.md` with updated counts
 
-**If architectural changes were made:**
-- Create ADR via `/adr [decision-title]`
-- Update `.claude/skills/project-context/references/architecture-map.md`
+**Context file locations:**
+- `.claude/skills/project-context/references/dependencies.md`
+- `.claude/skills/project-context/references/architecture-map.md`
+- `.claude/skills/project-context/references/module-patterns.md`
 
-**If dependencies changed:**
-- Update `.claude/skills/project-context/references/dependencies.md`
+**Example (TASK-1-01 - what SHOULD have been updated):**
+- New package `@supabase/ssr` added to core → Update `dependencies.md`
+- New export path `@appdistillery/core/auth/client` → Update `module-patterns.md`
+- New auth module structure → Update `architecture-map.md`
 
-**If new patterns established:**
-- Update `.claude/skills/project-context/references/module-patterns.md`
+**Verification:** Before moving to Phase 6, confirm:
+- [ ] dependencies.md reflects current packages
+- [ ] module-patterns.md reflects current import patterns
+- [ ] architecture-map.md reflects current structure
 
 ### 5.2 Update Task File
 

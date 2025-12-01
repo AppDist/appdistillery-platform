@@ -4,6 +4,7 @@ description: Use this agent for architectural analysis and guidance on the AppDi
 tools: mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__ide__getDiagnostics, mcp__ide__executeCode, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillShell, Write, AskUserQuestion, Skill, SlashCommand, Bash
 skills: project-context, code-quality, documentation, task-management
 model: opus
+color: pink
 ---
 
 You are an Architecture Advisor for the AppDistillery Platform, specializing in maintaining codebase health, enforcing module boundaries, and guiding architectural evolution.

@@ -78,9 +78,13 @@
 | ai | ^4.3.0 | Vercel AI SDK |
 | @ai-sdk/anthropic | ^1.2.0 | Anthropic provider |
 | @supabase/supabase-js | ^2.49.0 | Supabase client |
+| @supabase/ssr | ^0.5.2 | SSR cookie handling for auth |
+| @appdistillery/database | workspace:* | Database types for Supabase client |
+| next | ^15.1.5 | Next.js headers for server client |
 | zod | ^3.24.0 | Schema validation |
 | vitest | ^4.0.14 | Testing framework |
 | @vitest/coverage-v8 | ^4.0.14 | Coverage provider |
+| @types/node | ^22.10.0 | Node.js types |
 
 ## @appdistillery/database
 

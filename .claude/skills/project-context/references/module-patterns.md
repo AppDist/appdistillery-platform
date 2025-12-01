@@ -11,6 +11,36 @@
 | Duplicate Zod schemas | Import from `modules/*/schemas/` |
 | Import across modules | Use Core services or events |
 | Query without org_id | Always filter by `org_id` |
+| Import server code in client components | Use client-safe subpath exports |
+
+## Auth Import Pattern (TASK-1-01)
+
+**CRITICAL:** Client components cannot import server-only code. Use the correct subpath.
+
+**Server Components / Server Actions:**
+```typescript
+import {
+  createServerSupabaseClient,
+  getSessionContext
+} from '@appdistillery/core/auth'
+```
+
+**Client Components (IMPORTANT - use client subpath):**
+```typescript
+// WRONG - pulls in server-only code (next/headers), will fail build
+import { createBrowserSupabaseClient } from '@appdistillery/core/auth'
+
+// CORRECT - client-safe exports only
+import {
+  createBrowserSupabaseClient,
+  getAuthErrorMessage
+} from '@appdistillery/core/auth/client'
+```
+
+**Middleware:**
+```typescript
+import { updateSession } from '@appdistillery/core/auth'
+```
 
 ## Naming Conventions
 

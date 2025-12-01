@@ -31,6 +31,19 @@ appdistillery-platform/
 The `@appdistillery/core` package exports four distinct services:
 
 ### 1. Auth (`@appdistillery/core/auth`)
+
+**Supabase SSR Integration (TASK-1-01):**
+- `createBrowserSupabaseClient()` - Browser client for Client Components
+- `createServerSupabaseClient()` - Server client for Server Components/Actions
+- `updateSession()` - Middleware helper for session refresh
+- `getAuthErrorMessage()` - Sanitizes Supabase errors for display
+- `getSessionContext()` - Returns user/org/membership (placeholder org data until TASK-1-02)
+
+**Subpath Exports:**
+- `@appdistillery/core/auth` - Full auth module (server-safe)
+- `@appdistillery/core/auth/client` - Client-safe exports only (no server-only imports)
+
+**Core Features:**
 - User profiles and organizations
 - Memberships with roles (owner, admin, member)
 - Session context management
