@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from './supabase-server'
 import { getUserTenants } from './get-user-tenants'
+import { getActiveTenant } from './get-active-tenant'
 import type {
   UserProfile,
   Tenant,
@@ -10,13 +11,14 @@ import type {
 /**
  * Session context for authenticated requests
  *
- * Contains the authenticated user's profile, their current tenant (if any),
+ * Contains the authenticated user's profile, their active tenant (if any),
  * and their membership details within that tenant.
  *
- * - Personal users: tenant and membership will be null
- * - Tenant users: tenant and membership will be populated with first tenant
+ * The active tenant is determined by the `active_tenant_id` cookie, which
+ * is set via the `switchTenant()` action.
  *
- * Note: Multi-tenant switching will be implemented in Phase 2
+ * - Personal users: tenant and membership will be null (no active_tenant_id cookie)
+ * - Tenant users: tenant and membership will be populated with the active tenant
  */
 export interface SessionContext {
   user: UserProfile
@@ -27,8 +29,8 @@ export interface SessionContext {
 /**
  * Get the current session context for the authenticated user
  *
- * Fetches the user's profile and their primary tenant (first tenant by join date).
- * Personal users (no tenant memberships) will have tenant = null.
+ * Fetches the user's profile and their active tenant (from active_tenant_id cookie).
+ * Personal users (no active tenant) will have tenant = null.
  *
  * @returns SessionContext if authenticated, null if not authenticated
  *
@@ -39,12 +41,12 @@ export interface SessionContext {
  *   throw new Error('Unauthorized')
  * }
  *
- * // Personal user
+ * // Personal user (no active tenant)
  * if (!session.tenant) {
  *   console.log('Working as personal user')
  * }
  *
- * // Tenant user
+ * // Tenant user (active tenant selected)
  * if (session.tenant) {
  *   console.log(`Working in tenant: ${session.tenant.name}`)
  *   console.log(`Role: ${session.membership.role}`)
@@ -88,12 +90,12 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     updatedAt: new Date(rawProfile.updated_at),
   }
 
-  // Fetch user's tenants (if any)
+  // Get active tenant from cookie (user's selected tenant)
   try {
-    const tenants = await getUserTenants()
+    const activeTenant = await getActiveTenant()
 
-    // If user has no tenants, they work as a personal user
-    if (tenants.length === 0) {
+    // If no active tenant, user is working in personal mode
+    if (!activeTenant) {
       return {
         user: userProfile,
         tenant: null,
@@ -101,25 +103,41 @@ export async function getSessionContext(): Promise<SessionContext | null> {
       }
     }
 
-    // Use first tenant as primary (sorted by joined_at DESC)
-    const primary = tenants[0]
+    // Fetch user's membership details for the active tenant
+    const { data: membershipRow, error: membershipError } = await supabase
+      .from('tenant_members')
+      .select('id, tenant_id, user_id, role, joined_at')
+      .eq('user_id', user.id)
+      .eq('tenant_id', activeTenant.id)
+      .single()
 
-    if (!primary) {
-      // Fallback if no valid tenant found
+    if (membershipError || !membershipRow) {
+      console.error('[getSessionContext] Failed to fetch membership:', membershipError)
+      // Fallback to personal user mode if membership fetch fails
       return {
         user: userProfile,
         tenant: null,
         membership: null,
       }
+    }
+
+    // Transform membership row to camelCase
+    const rawMembership = membershipRow as any
+    const membership: TenantMember = {
+      id: rawMembership.id,
+      tenantId: rawMembership.tenant_id,
+      userId: rawMembership.user_id,
+      role: rawMembership.role,
+      joinedAt: new Date(rawMembership.joined_at),
     }
 
     return {
       user: userProfile,
-      tenant: primary.tenant,
-      membership: primary.membership,
+      tenant: activeTenant,
+      membership,
     }
   } catch (error) {
-    console.error('[getSessionContext] Failed to fetch tenants:', error)
+    console.error('[getSessionContext] Failed to get active tenant:', error)
     // Fallback to personal user mode if tenant fetch fails
     return {
       user: userProfile,
@@ -139,9 +157,13 @@ export { getAuthErrorMessage } from './errors'
 
 // Export tenant utilities
 export { getUserTenants } from './get-user-tenants'
+export { getActiveTenant } from './get-active-tenant'
 
 // Export tenant creation actions
 export { createHousehold, createOrganization } from './actions/create-tenant'
+
+// Export tenant switching actions
+export { switchTenant } from './actions/switch-tenant'
 
 // Export tenant schemas
 export {

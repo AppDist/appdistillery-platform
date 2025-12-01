@@ -8,6 +8,7 @@ import {
   type CreateOrganizationInput,
 } from '../schemas/tenant'
 import type { Tenant, TenantRow } from '../types'
+import { transformTenantRow } from '../transforms'
 
 /**
  * Result type for tenant creation operations
@@ -16,23 +17,6 @@ import type { Tenant, TenantRow } from '../types'
 type CreateTenantResult =
   | { success: true; data: Tenant }
   | { success: false; error: string }
-
-/**
- * Transform snake_case database row to camelCase Tenant object
- */
-function transformTenantRow(row: TenantRow): Tenant {
-  return {
-    id: row.id,
-    type: row.type,
-    name: row.name,
-    slug: row.slug,
-    orgNumber: row.org_number,
-    billingEmail: row.billing_email,
-    settings: row.settings,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
-  }
-}
 
 /**
  * Create a household tenant

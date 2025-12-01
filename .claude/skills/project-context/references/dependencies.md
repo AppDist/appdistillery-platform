@@ -59,6 +59,7 @@
 | Package | Version | Purpose |
 |---------|---------|---------|
 | @radix-ui/react-slot | ^1.2.4 | Radix slot primitive |
+| @radix-ui/react-dropdown-menu | ^2.1.16 | Dropdown menu component (shadcn/ui) |
 | lucide-react | ^0.555.0 | Icon library |
 
 ### Development
