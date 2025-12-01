@@ -18,57 +18,45 @@ Set up Sentry for error monitoring and performance tracking in the Next.js appli
 
 ## Acceptance Criteria
 
-- [x] @sentry/nextjs installed
-- [x] sentry.client.config.ts configured
-- [x] sentry.server.config.ts configured
-- [x] sentry.edge.config.ts configured
-- [x] Environment variables documented
-- [x] Source maps uploaded on build
+- [x] @sentry/nextjs installed (v8.46.0)
+- [x] instrumentation-client.ts configured (client-side, replays, router tracking)
+- [x] instrumentation.ts configured (server/edge with onRequestError hook)
+- [x] global-error.tsx created (React error boundary)
+- [x] next.config.ts wrapped with withSentryConfig
+- [x] Environment variables documented in .env.example
+- [x] Source maps configured (deleteSourcemapsAfterUpload)
 - [x] Test error tracking works (configured, requires production Sentry project)
 
 ## Technical Notes
 
-Sentry integration for Next.js 15:
+Sentry integration for Next.js 15 uses the **new instrumentation file pattern** (not the old sentry.*.config.ts files).
 
-1. **Installation**:
-   ```bash
-   pnpm --filter @appdistillery/web add @sentry/nextjs
-   ```
+### Files Created
 
-2. **Config files** (create via wizard or manually):
-   - `sentry.client.config.ts`
-   - `sentry.server.config.ts`
-   - `sentry.edge.config.ts`
+| File | Purpose |
+|------|---------|
+| `apps/web/instrumentation.ts` | Server/edge Sentry init + `onRequestError` hook |
+| `apps/web/instrumentation-client.ts` | Client Sentry init + replay + `onRouterTransitionStart` hook |
+| `apps/web/src/app/global-error.tsx` | React error boundary for app-level errors |
+| `apps/web/next.config.ts` | Wrapped with `withSentryConfig` for build options |
 
-3. **Environment variables**:
-   - `SENTRY_DSN` - Project DSN
-   - `SENTRY_ORG` - Organization slug
-   - `SENTRY_PROJECT` - Project name
-   - `SENTRY_AUTH_TOKEN` - For source maps
+### Environment Variables
 
-4. **next.config.ts** wrapper:
-   ```typescript
-   import { withSentryConfig } from '@sentry/nextjs'
-   ```
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SENTRY_DSN` | Client-side DSN (public) |
+| `SENTRY_DSN` | Server-side DSN |
+| `SENTRY_ORG` | Organization slug (for source maps) |
+| `SENTRY_PROJECT` | Project name (for source maps) |
+| `SENTRY_AUTH_TOKEN` | Auth token (for source map uploads) |
 
-### Files to Create/Modify
+### Configuration Highlights
 
-- `apps/web/sentry.client.config.ts`
-- `apps/web/sentry.server.config.ts`
-- `apps/web/sentry.edge.config.ts`
-- `apps/web/next.config.ts` - Add Sentry wrapper
-- `.env.example` - Document Sentry vars
-
-### Patterns to Follow
-
-Configure for production only initially:
-```typescript
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  enabled: process.env.NODE_ENV === 'production',
-  tracesSampleRate: 0.1,
-})
-```
+- **Production only**: `enabled: process.env.NODE_ENV === 'production'`
+- **10% trace sampling**: `tracesSampleRate: 0.1`
+- **Session replay**: 10% normal, 100% on error
+- **Tunnel route**: `/monitoring` (bypasses ad-blockers)
+- **Source maps**: Deleted after upload for security
 
 ## Dependencies
 
