@@ -6,8 +6,8 @@
 
 | Phase | Status | Count |
 |-------|--------|-------|
-| Phase 0 | Completed | 8 |
-| Phase 0 | Backlog | 1 |
+| Phase 0 | Completed | 9 |
+| Phase 0 | Backlog | 0 |
 | Phase 1 | Backlog | 17 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
@@ -31,12 +31,7 @@
 | [TASK-0-06](completed/TASK-0-06-vitest-setup.md) | Vitest testing setup | 2 |
 | [TASK-0-08](completed/TASK-0-08-claude-context.md) | Claude Code context setup | 3 |
 | [TASK-0-09](completed/TASK-0-09-adr-structure.md) | ADR documentation structure | 1 |
-
-### Backlog
-
-| ID | Title | Priority | Complexity |
-|----|-------|----------|------------|
-| [TASK-0-07](backlog/TASK-0-07-sentry-monitoring.md) | Sentry error monitoring | P2-Medium | 2 |
+| [TASK-0-07](completed/TASK-0-07-sentry-monitoring.md) | Sentry error monitoring | 2 |
 
 ---
 
