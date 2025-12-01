@@ -2,38 +2,8 @@ import { createServerSupabaseClient } from './supabase-server'
 import type {
   TenantMembership,
   TenantRow,
-  TenantMemberRow,
 } from './types'
-
-/**
- * Transform snake_case database row to camelCase TypeScript object
- */
-function transformTenantRow(row: TenantRow) {
-  return {
-    id: row.id,
-    type: row.type,
-    name: row.name,
-    slug: row.slug,
-    orgNumber: row.org_number,
-    billingEmail: row.billing_email,
-    settings: row.settings,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
-  }
-}
-
-/**
- * Transform snake_case database row to camelCase TypeScript object
- */
-function transformMemberRow(row: TenantMemberRow) {
-  return {
-    id: row.id,
-    tenantId: row.tenant_id,
-    userId: row.user_id,
-    role: row.role,
-    joinedAt: new Date(row.joined_at),
-  }
-}
+import { transformTenantRow, transformMemberRow } from './transforms'
 
 /**
  * Fetch all tenants for the authenticated user
