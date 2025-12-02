@@ -4,8 +4,10 @@ title: Core kernel integration test
 priority: P1-High
 complexity: 3
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+started: 2025-12-02
+completed: 2025-12-02
 ---
 
 # TASK-1-15: Core kernel integration test
@@ -16,12 +18,12 @@ Create end-to-end integration test for the Core Kernel flow: signup → create o
 
 ## Acceptance Criteria
 
-- [ ] Test full user journey from signup to AI usage
-- [ ] Verify auth flow works
-- [ ] Verify org creation works
-- [ ] Verify brainHandle returns structured output
-- [ ] Verify usage event recorded correctly
-- [ ] Test runs against local Supabase + mocked AI
+- [x] Test full user journey from signup to AI usage
+- [x] Verify auth flow works
+- [x] Verify org creation works (tenant creation)
+- [x] Verify brainHandle returns structured output
+- [x] Verify usage event recorded correctly
+- [x] Test runs against local Supabase + mocked AI
 
 ## Technical Notes
 
@@ -137,3 +139,46 @@ describe('Core Kernel Integration', () => {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Completed: Full Core Kernel integration test suite |
+
+## Implementation Notes
+
+### Files Created
+- `packages/core/src/__tests__/integration/core-kernel.test.ts` - 12 test cases
+- `packages/core/src/__tests__/integration/setup.ts` - Test helpers
+
+### Test Coverage (12 tests)
+
+**1. User Journey (4 tests)**
+- Creates user via signup
+- Auto-creates user_profile via trigger
+- Creates tenant via service role
+- Verifies user is tenant owner
+
+**2. AI Integration (3 tests)**
+- brainHandle returns structured output with tenant context
+- Usage event recorded correctly with tenant_id
+- Tokens and action match expected values
+
+**3. Personal Mode (2 tests)**
+- brainHandle works without tenant (Personal mode)
+- Usage event has null tenant_id
+
+**4. Error Handling (3 tests)**
+- Handles brainHandle failure gracefully
+- Records failed attempts with units: 0
+- Handles invalid taskType format
+
+### Key Features
+- Mocks AI adapters (Anthropic/OpenAI) to avoid external dependencies
+- Uses real Supabase database for authentic integration testing
+- Comprehensive cleanup in afterAll
+- Skip condition when Supabase not available
+- 30-second timeouts for database operations
+
+### Running Tests
+```bash
+pnpm --filter @appdistillery/core test integration/core-kernel.test.ts
+```
+
+Tests skip gracefully if local Supabase is not running.
