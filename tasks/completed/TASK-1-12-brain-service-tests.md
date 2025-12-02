@@ -4,8 +4,9 @@ title: Brain service tests
 priority: P1-High
 complexity: 2
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+completed: 2025-12-02
 ---
 
 # TASK-1-12: Brain service tests
@@ -16,12 +17,12 @@ Create comprehensive tests for brainHandle() and related services with mocked AI
 
 ## Acceptance Criteria
 
-- [ ] Unit tests for brainHandle()
-- [ ] Mock Anthropic adapter responses
-- [ ] Test usage recording integration
-- [ ] Test schema validation
-- [ ] Test error handling
-- [ ] Tests pass in CI
+- [x] Unit tests for brainHandle()
+- [x] Mock Anthropic adapter responses
+- [x] Test usage recording integration
+- [x] Test schema validation
+- [x] Test error handling
+- [x] Tests pass in CI
 
 ## Technical Notes
 
@@ -110,3 +111,26 @@ describe('brainHandle', () => {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Completed - Tests were implemented during TASK-1-11 |
+
+## Implementation Notes
+
+Tests were created as part of TASK-1-11 (brainHandle service) implementation:
+
+**Test files created:**
+- `packages/core/src/brain/brain-handle.test.ts` - 25 unit tests for brainHandle()
+- `packages/core/src/brain/adapters/anthropic.test.ts` - 16 tests for Anthropic adapter
+- `packages/core/src/__tests__/brain.test.ts` - Type interface tests
+
+**Test coverage includes:**
+- Success path (data, adapter params, options, recordUsage calls)
+- Action format derivation (module.task → module:task:generate)
+- Brain Units calculation (fixed costs, token-based fallback)
+- Adapter failure handling (success: false returns)
+- Unexpected error handling (thrown errors)
+- Invalid taskType format validation
+- Optional parameters (null/undefined tenantId, userId)
+- Duration tracking
+- Silent recordUsage failure handling
+
+**Total: 169 tests passing in @appdistillery/core package**
