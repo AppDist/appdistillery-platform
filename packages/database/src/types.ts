@@ -276,6 +276,18 @@ export type Database = {
         }
         Returns: string
       }
+      user_is_tenant_admin: {
+        Args: { p_tenant_id: string; p_user_id?: string }
+        Returns: boolean
+      }
+      user_is_tenant_member: {
+        Args: { p_tenant_id: string; p_user_id?: string }
+        Returns: boolean
+      }
+      user_is_tenant_owner: {
+        Args: { p_tenant_id: string; p_user_id?: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
