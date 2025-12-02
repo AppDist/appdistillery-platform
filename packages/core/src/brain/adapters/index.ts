@@ -21,3 +21,11 @@ export {
   type GenerateOptionsWithOpenAI,
   type OpenAIModel,
 } from './openai';
+
+// Google Gemini adapter
+export {
+  generateStructuredWithGoogle,
+  GOOGLE_MODELS,
+  type GenerateOptionsWithGoogle,
+  type GoogleModel,
+} from './google';

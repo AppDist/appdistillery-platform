@@ -4,8 +4,10 @@ title: Google Gemini adapter
 priority: P1-High
 complexity: 2
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+started: 2025-12-02
+completed: 2025-12-02
 ---
 
 # TASK-1-10b: Google Gemini adapter
@@ -16,12 +18,12 @@ Create Google Gemini AI adapter using Vercel AI SDK for structured output genera
 
 ## Acceptance Criteria
 
-- [ ] @ai-sdk/google installed
-- [ ] Gemini model configuration (Gemini 2.0, Gemini 1.5 Pro)
-- [ ] generateObject helper for structured output
-- [ ] Token counting from response
-- [ ] Error handling with retries
-- [ ] Environment variable: GOOGLE_GENERATIVE_AI_API_KEY
+- [x] @ai-sdk/google installed
+- [x] Gemini model configuration (Gemini 2.5 Flash default, 2.5 Pro, 2.5 Flash Lite, 3 Pro Preview)
+- [x] generateObject helper for structured output
+- [x] Token counting from response
+- [x] Error handling with retries
+- [x] Environment variable: GOOGLE_GENERATIVE_AI_API_KEY
 
 ## Technical Notes
 
@@ -107,3 +109,4 @@ export async function generateWithGoogle<T extends z.ZodType>(
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Completed: Implemented Google Gemini adapter with gemini-2.5-flash default |

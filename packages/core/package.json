@@ -17,14 +17,30 @@
   },
   "typesVersions": {
     "*": {
-      "auth": ["./src/auth/index.ts"],
-      "auth/client": ["./src/auth/client.ts"],
-      "auth/browser": ["./src/auth/supabase-browser.ts"],
-      "auth/errors": ["./src/auth/errors.ts"],
-      "auth/schemas": ["./src/auth/schemas/tenant.ts"],
-      "brain": ["./src/brain/index.ts"],
-      "ledger": ["./src/ledger/index.ts"],
-      "modules": ["./src/modules/index.ts"]
+      "auth": [
+        "./src/auth/index.ts"
+      ],
+      "auth/client": [
+        "./src/auth/client.ts"
+      ],
+      "auth/browser": [
+        "./src/auth/supabase-browser.ts"
+      ],
+      "auth/errors": [
+        "./src/auth/errors.ts"
+      ],
+      "auth/schemas": [
+        "./src/auth/schemas/tenant.ts"
+      ],
+      "brain": [
+        "./src/brain/index.ts"
+      ],
+      "ledger": [
+        "./src/ledger/index.ts"
+      ],
+      "modules": [
+        "./src/modules/index.ts"
+      ]
     }
   },
   "scripts": {
@@ -34,6 +50,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/google": "^2.0.44",
     "@ai-sdk/openai": "^1.0.0",
     "@appdistillery/database": "workspace:*",
     "@supabase/ssr": "^0.5.2",
