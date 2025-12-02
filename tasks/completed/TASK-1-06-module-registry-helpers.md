@@ -4,8 +4,9 @@ title: Module registry helpers
 priority: P2-Medium
 complexity: 2
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+completed: 2024-12-02
 ---
 
 # TASK-1-06: Module registry helpers
@@ -16,11 +17,11 @@ Create TypeScript helpers for querying and managing module installations.
 
 ## Acceptance Criteria
 
-- [ ] getInstalledModules(tenantId) helper
-- [ ] isModuleEnabled(tenantId, moduleId) helper
-- [ ] installModule Server Action
-- [ ] uninstallModule Server Action
-- [ ] Module manifest type definition
+- [x] getInstalledModules(tenantId) helper
+- [x] isModuleEnabled(tenantId, moduleId) helper
+- [x] installModule Server Action
+- [x] uninstallModule Server Action
+- [x] Module manifest type definition
 
 ## Technical Notes
 
@@ -92,3 +93,4 @@ export interface ModuleManifest {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2024-12-02 | Completed: All helpers and Server Actions implemented with role authorization, tenant isolation, and Zod validation |

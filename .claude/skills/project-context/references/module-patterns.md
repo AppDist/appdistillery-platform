@@ -12,6 +12,7 @@
 | Import across modules | Use Core services or events |
 | Query without tenant_id/user_id | Always filter by `tenant_id` and/or `user_id` |
 | Import server code in client components | Use client-safe subpath exports |
+| Check module access manually | Use `isModuleEnabled()` from `@appdistillery/core/modules` |
 
 ## Auth Import Pattern (TASK-1-01, TASK-1-02)
 
@@ -200,22 +201,101 @@ export const agencyManifest: ModuleManifest = {
   version: '0.1.0',
 
   routes: [
-    { path: '/agency', component: 'AgencyDashboard' },
-    { path: '/agency/leads', component: 'LeadsList' },
-    { path: '/agency/leads/new', component: 'LeadIntake' },
+    { path: '/agency', icon: 'Users', label: 'Dashboard' },
+    { path: '/agency/leads', icon: 'FileText', label: 'Leads' },
   ],
 
-  actions: [
-    { name: 'agency:scope:generate', cost: 50 },
-    { name: 'agency:proposal:draft', cost: 100 },
-  ],
-
-  artifacts: [
-    { type: 'brief', table: 'agency_briefs' },
-    { type: 'proposal', table: 'agency_proposals' },
+  usageActions: [
+    'agency:scope:generate',
+    'agency:proposal:draft',
   ],
 }
 ```
+
+## Module Registry Pattern (TASK-1-06)
+
+Use `@appdistillery/core/modules` for module installation and access checks:
+
+### Checking Module Access
+
+```typescript
+import { isModuleEnabled } from '@appdistillery/core/modules'
+
+// Check if a module is enabled for the current tenant
+const session = await getSessionContext()
+if (!session?.tenant) throw new Error('No active tenant')
+
+const hasAgency = await isModuleEnabled(session.tenant.id, 'agency')
+if (!hasAgency) {
+  return { success: false, error: 'Agency module not enabled' }
+}
+```
+
+### Getting Installed Modules
+
+```typescript
+import { getInstalledModules } from '@appdistillery/core/modules'
+
+// Get all enabled modules for current tenant
+const session = await getSessionContext()
+if (!session?.tenant) throw new Error('No active tenant')
+
+const modules = await getInstalledModules(session.tenant.id)
+// Returns: InstalledModule[] with module metadata and settings
+
+// Include disabled modules
+const allModules = await getInstalledModules(session.tenant.id, {
+  includeDisabled: true
+})
+```
+
+### Installing Modules (Admin Only)
+
+```typescript
+'use client'
+import { installModule } from '@appdistillery/core/modules'
+
+async function handleInstall() {
+  const result = await installModule({
+    moduleId: 'agency',
+    settings: { featureFlags: { proposals: true } }
+  })
+
+  if (result.success) {
+    console.log('Module installed:', result.data.moduleId)
+  } else {
+    console.error('Failed:', result.error)
+  }
+}
+```
+
+### Uninstalling Modules (Admin Only)
+
+```typescript
+'use client'
+import { uninstallModule } from '@appdistillery/core/modules'
+
+async function handleUninstall() {
+  // Soft delete (disable only)
+  const result = await uninstallModule({
+    moduleId: 'agency',
+    hardDelete: false
+  })
+
+  if (result.success) {
+    console.log('Module uninstalled')
+  } else {
+    console.error('Failed:', result.error)
+  }
+}
+```
+
+**Key Points:**
+- `isModuleEnabled()` checks if a module is installed and enabled
+- `getInstalledModules()` returns all installed modules with metadata
+- `installModule()` requires admin role (owner or admin)
+- `uninstallModule()` supports soft delete (disable) or hard delete (remove)
+- All operations are tenant-scoped automatically
 
 ## Tenant Isolation Pattern
 

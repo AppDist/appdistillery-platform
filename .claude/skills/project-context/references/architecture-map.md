@@ -78,11 +78,23 @@ The `@appdistillery/core` package exports four distinct services:
 - Brain Units (BU) as internal currency
 - Query helpers: `getUsageHistory()`, `getUsageSummary()`
 
-### 4. Modules (`@appdistillery/core/modules`)
-- Module registry and manifest system
-- Installation management per organization
-- `canAccessModule(orgId, moduleId)` permission check
-- Dynamic route discovery
+### 4. Modules (`@appdistillery/core/modules`) - TASK-1-06
+
+**Module Registry System:**
+- `getInstalledModules(tenantId)` - Get all installed modules for a tenant
+- `isModuleEnabled(tenantId, moduleId)` - Check if specific module is enabled
+- `installModule({ moduleId, settings? })` - Install module (admin only)
+- `uninstallModule({ moduleId, hardDelete? })` - Uninstall/disable module (admin only)
+
+**Types:**
+- `ModuleManifest` - Module definition with routes and usage actions
+- `InstalledModule` - Installed module data from database
+
+**Key Features:**
+- Tenant-scoped module installations
+- Admin-only install/uninstall operations
+- Soft delete support (disable vs hard delete)
+- Module settings storage per tenant
 
 ## Module Structure Pattern
 

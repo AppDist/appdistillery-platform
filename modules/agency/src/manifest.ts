@@ -5,19 +5,14 @@ export const agencyManifest: ModuleManifest = {
   name: 'AppDistillery Agency',
   version: '0.1.0',
   description: 'AI-powered consultancy intake, scoping, and proposals',
-  routes: {
-    root: '/agency',
-    pages: [
-      { path: '/agency', title: 'Pipeline', icon: 'Briefcase' },
-      { path: '/agency/intake', title: 'New Lead', icon: 'UserPlus' },
-      { path: '/agency/briefs', title: 'Briefs', icon: 'FileText' },
-      { path: '/agency/proposals', title: 'Proposals', icon: 'FileSignature' },
-    ],
-  },
-  usage: {
-    actions: [
-      { key: 'agency:scope:generate', unitCost: 50, description: 'AI analysis of client brief' },
-      { key: 'agency:proposal:draft', unitCost: 100, description: 'AI-generated proposal' },
-    ],
-  },
+  routes: [
+    { path: '/agency', label: 'Pipeline', icon: 'Briefcase' },
+    { path: '/agency/intake', label: 'New Lead', icon: 'UserPlus' },
+    { path: '/agency/briefs', label: 'Briefs', icon: 'FileText' },
+    { path: '/agency/proposals', label: 'Proposals', icon: 'FileSignature' },
+  ],
+  usageActions: [
+    'agency:scope:generate',
+    'agency:proposal:draft',
+  ],
 };

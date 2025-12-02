@@ -35,6 +35,7 @@ Code quality guidelines for maintaining consistency, type safety, and best pract
 | Duplicate Zod schemas | Import from `modules/*/schemas/` |
 | Import across modules | Use Core services or events |
 | Query without org_id | Always filter by `org_id` for tenant isolation |
+| Check module access manually | Use `isModuleEnabled()` from `@appdistillery/core/modules` |
 
 ## Core Principles
 
