@@ -8,8 +8,8 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Completed | 7 |
-| Phase 1 | Backlog | 10 |
+| Phase 1 | Completed | 8 |
+| Phase 1 | Backlog | 9 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
 | **Total** | | **31** |
@@ -53,6 +53,8 @@
 | [TASK-1-05](completed/TASK-1-05-module-registry-tables.md) | Module registry tables | 2 |
 | [TASK-1-07](completed/TASK-1-07-usage-events-table.md) | Usage events table + RLS | 2 |
 | [TASK-1-08](completed/TASK-1-08-record-usage-service.md) | recordUsage() service | 2 |
+| [TASK-1-06](completed/TASK-1-06-module-registry-helpers.md) | Module registry helpers | 2 |
+| [TASK-1-09](completed/TASK-1-09-usage-history-query.md) | Usage history query | 2 |
 
 #### Backlog
 
@@ -69,9 +71,7 @@
 
 ### Usage Ledger
 
-| ID | Title | Priority | Complexity |
-|----|-------|----------|------------|
-| [TASK-1-09](backlog/TASK-1-09-usage-history-query.md) | Usage history query | P2-Medium | 2 |
+All usage ledger tasks completed in Phase 1.
 
 ### Brain (AI Router)
 

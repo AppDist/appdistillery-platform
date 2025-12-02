@@ -83,3 +83,100 @@ export const UsageEventSchema = z.object({
 })
 
 export type UsageEvent = z.infer<typeof UsageEventSchema>
+
+/**
+ * Input schema for querying usage history
+ *
+ * Supports filtering by date range, action, module, and user.
+ * Pagination via limit and offset.
+ */
+export const UsageHistoryOptionsSchema = z.object({
+  /**
+   * Required tenant ID (null for Personal mode)
+   */
+  tenantId: z.string().uuid().nullable(),
+
+  /**
+   * Filter by specific user ID
+   */
+  userId: z.string().uuid().optional(),
+
+  /**
+   * Filter by action pattern (e.g., "agency:scope:generate")
+   */
+  action: z.string().optional(),
+
+  /**
+   * Filter by module ID (e.g., "agency")
+   */
+  moduleId: z.string().optional(),
+
+  /**
+   * Start date (ISO 8601 string)
+   */
+  startDate: z.string().datetime().optional(),
+
+  /**
+   * End date (ISO 8601 string)
+   */
+  endDate: z.string().datetime().optional(),
+
+  /**
+   * Maximum number of records to return
+   */
+  limit: z.number().int().positive().max(1000).optional().default(100),
+
+  /**
+   * Number of records to skip (for pagination)
+   */
+  offset: z.number().int().nonnegative().optional().default(0),
+})
+
+// Use z.input to make fields with defaults optional at the input level
+export type UsageHistoryOptions = z.input<typeof UsageHistoryOptionsSchema>
+
+/**
+ * Schema for aggregated usage by action
+ */
+export const UsageByActionSchema = z.object({
+  action: z.string(),
+  tokensTotal: z.number(),
+  units: z.number(),
+  count: z.number(),
+})
+
+export type UsageByAction = z.infer<typeof UsageByActionSchema>
+
+/**
+ * Schema for usage summary result
+ */
+export const UsageSummarySchema = z.object({
+  /**
+   * Total tokens consumed in the period
+   */
+  totalTokens: z.number(),
+
+  /**
+   * Total Brain Units consumed in the period
+   */
+  totalUnits: z.number(),
+
+  /**
+   * Total number of usage events
+   */
+  eventCount: z.number(),
+
+  /**
+   * Usage breakdown by action
+   */
+  byAction: z.array(UsageByActionSchema),
+})
+
+export type UsageSummary = z.infer<typeof UsageSummarySchema>
+
+/**
+ * Period type for usage summary aggregation
+ */
+export const PeriodSchema = z.enum(['day', 'week', 'month'])
+
+export type Period = z.infer<typeof PeriodSchema>

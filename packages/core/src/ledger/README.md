@@ -98,12 +98,145 @@ type RecordUsageResult =
   | { success: false; error: string }
 ```
 
+### getUsageHistory(options: UsageHistoryOptions)
+
+Retrieves usage history with filtering and pagination. Respects RLS policies for tenant isolation.
+
+**Parameters:**
+
+- `tenantId` (string | null, required) - Tenant ID (null for Personal mode)
+- `userId` (string, optional) - Filter by specific user
+- `action` (string, optional) - Filter by action (e.g., "agency:scope:generate")
+- `moduleId` (string, optional) - Filter by module ID
+- `startDate` (string, optional) - Start date (ISO 8601 format)
+- `endDate` (string, optional) - End date (ISO 8601 format)
+- `limit` (number, default: 100) - Maximum records to return (max 1000)
+- `offset` (number, default: 0) - Records to skip for pagination
+
+**Returns:** `Promise<GetUsageHistoryResult>`
+
+```typescript
+type GetUsageHistoryResult =
+  | { success: true; data: UsageEvent[]; count: number }
+  | { success: false; error: string }
+```
+
+**Example:**
+
+```typescript
+import { getUsageHistory } from '@appdistillery/core/ledger'
+
+// Get recent usage for tenant
+const result = await getUsageHistory({
+  tenantId: 'tenant-123',
+  limit: 50,
+  offset: 0
+})
+
+if (result.success) {
+  console.log(`Found ${result.count} events`)
+  result.data.forEach(event => {
+    console.log(`${event.action}: ${event.tokensTotal} tokens`)
+  })
+}
+
+// Filter by action and date range
+const filtered = await getUsageHistory({
+  tenantId: 'tenant-123',
+  action: 'agency:scope:generate',
+  startDate: '2025-01-01T00:00:00Z',
+  endDate: '2025-01-31T23:59:59Z'
+})
+
+// Personal mode (no tenant)
+const personal = await getUsageHistory({
+  tenantId: null,
+  userId: 'user-456'
+})
+```
+
+### getUsageSummary(tenantId: string | null, period: Period)
+
+Aggregates usage metrics over a time period. Returns total tokens, units, and breakdown by action.
+
+**Parameters:**
+
+- `tenantId` (string | null, required) - Tenant ID (null for Personal mode)
+- `period` ('day' | 'week' | 'month', required) - Time period for aggregation
+  - `'day'` - Current calendar day
+  - `'week'` - Current week (Sunday to today)
+  - `'month'` - Current calendar month
+
+**Returns:** `Promise<GetUsageSummaryResult>`
+
+```typescript
+type GetUsageSummaryResult =
+  | { success: true; data: UsageSummary }
+  | { success: false; error: string }
+
+interface UsageSummary {
+  totalTokens: number        // Total tokens consumed in period
+  totalUnits: number         // Total Brain Units consumed
+  eventCount: number         // Total number of events
+  byAction: UsageByAction[]  // Breakdown by action
+}
+
+interface UsageByAction {
+  action: string
+  tokensTotal: number
+  units: number
+  count: number
+}
+```
+
+**Example:**
+
+```typescript
+import { getUsageSummary } from '@appdistillery/core/ledger'
+
+// Get today's usage for tenant
+const result = await getUsageSummary('tenant-123', 'day')
+
+if (result.success) {
+  const { data } = result
+  console.log(`Today: ${data.totalTokens} tokens, ${data.totalUnits} units`)
+  console.log('By action:')
+  data.byAction.forEach(action => {
+    console.log(`  ${action.action}: ${action.count} calls`)
+  })
+}
+
+// Get this month's usage for personal mode
+const personal = await getUsageSummary(null, 'month')
+if (personal.success) {
+  console.log(`Month total: ${personal.data.totalTokens} tokens`)
+}
+```
+
+## Supabase Client Utilities
+
+### createAuthClient()
+
+Creates a Supabase client using the anon key. Used by query functions (`getUsageHistory`, `getUsageSummary`) to respect RLS policies.
+
+**Usage:**
+
+```typescript
+import { createAuthClient } from '@appdistillery/core/ledger/supabase-client'
+
+const supabase = createAuthClient()
+// Now use this for read queries that should respect RLS
+```
+
+**Note:** This is used internally by query functions. You typically don't need to call this directly.
+
 ## Environment Variables
 
 Required:
 
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `SUPABASE_SECRET_KEY` - Service role key for admin operations
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key for authenticated queries (RLS)
+- `SUPABASE_SECRET_KEY` - Service role key for admin operations (recordUsage only)
 
 ## Naming Conventions
 
