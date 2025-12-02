@@ -73,10 +73,23 @@ The `@appdistillery/core` package exports four distinct services:
 - Provider: Anthropic Claude (via @ai-sdk/anthropic)
 
 ### 3. Ledger (`@appdistillery/core/ledger`)
-- Usage tracking via append-only `usage_events` table
-- `recordUsage(action, tokens, cost)` - tracks all billable operations
+
+**Purpose:** Usage tracking via append-only `usage_events` table
+
+**Exports (TASK-1-08):**
+- `recordUsage()` - Record usage event, returns discriminated union
+- `RecordUsageInput` - Input type for recordUsage
+- `RecordUsageInputSchema` - Zod schema for input validation
+- `UsageEvent` - Output type for usage events
+- `UsageEventSchema` - Zod schema for output validation
+
+**Core Features:**
 - Brain Units (BU) as internal currency
-- Query helpers: `getUsageHistory()`, `getUsageSummary()`
+- Service role client for RLS bypass (system operation)
+- Action format validation: `module:domain:verb` (regex enforced)
+- Supports Personal mode (nullable tenantId)
+- Returns `{ success: true, data }` or `{ success: false, error }`
+- Computed column: `tokens_total = tokens_input + tokens_output`
 
 **Usage Events Table (TASK-1-07):**
 - Tracks AI usage and billable actions per tenant
@@ -87,6 +100,10 @@ The `@appdistillery/core` package exports four distinct services:
 - `metadata` JSONB, `created_at`
 - RLS policies for tenant isolation + Personal mode access
 - Immutable audit records (no UPDATE/DELETE for users)
+
+**Future Query Helpers:**
+- `getUsageHistory()` - Fetch usage history
+- `getUsageSummary()` - Aggregate usage stats
 
 ### 4. Modules (`@appdistillery/core/modules`) - TASK-1-06
 

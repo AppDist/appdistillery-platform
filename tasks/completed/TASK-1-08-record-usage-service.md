@@ -4,8 +4,9 @@ title: recordUsage() service
 priority: P1-High
 complexity: 2
 module: core
-status: BACKLOG
+status: DONE
 created: 2024-11-30
+completed: 2025-12-02
 ---
 
 # TASK-1-08: recordUsage() service
@@ -16,12 +17,16 @@ Create recordUsage() service function for tracking AI usage from Server Actions.
 
 ## Acceptance Criteria
 
-- [ ] recordUsage() function in packages/core
-- [ ] Accepts action, orgId, tokens, metadata
-- [ ] Inserts into usage_events table
-- [ ] Returns usage event record
-- [ ] Type-safe with Zod validation
-- [ ] Exported from @appdistillery/core/ledger
+- [x] recordUsage() function in packages/core
+- [x] Accepts action, tenantId, userId, tokens, metadata
+- [x] Inserts into usage_events table
+- [x] Returns usage event record (discriminated union)
+- [x] Type-safe with Zod validation
+- [x] Exported from @appdistillery/core/ledger
+- [x] Action format validation (module:domain:verb)
+- [x] Supports Personal mode (nullable tenantId)
+- [x] Uses service role client (bypasses RLS)
+- [x] Unit tests written and passing
 
 ## Technical Notes
 
@@ -90,3 +95,36 @@ export async function recordUsage(event: UsageEvent) {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Implementation completed |
+
+## Implementation Summary
+
+**Files Created:**
+- `/packages/core/src/ledger/types.ts` - Zod schemas and TypeScript types
+- `/packages/core/src/ledger/record-usage.ts` - recordUsage() function implementation
+- `/packages/core/src/ledger/record-usage.test.ts` - Unit tests
+- `/packages/core/src/ledger/README.md` - API documentation
+
+**Files Modified:**
+- `/packages/core/src/ledger/index.ts` - Added exports
+
+**Key Features:**
+- Zod-validated input with `RecordUsageInputSchema`
+- Action format validation: `module:domain:verb` (regex enforced)
+- Service role client for RLS bypass (system operation)
+- Discriminated union return type: `{ success: true, data }` | `{ success: false, error }`
+- Supports nullable `tenantId` for Personal mode
+- Camel case API with snake_case database mapping
+- Computed column support for `tokens_total`
+
+**Exports:**
+- `recordUsage()` - Main function
+- `RecordUsageInput` - Input type
+- `RecordUsageInputSchema` - Zod schema for input
+- `UsageEvent` - Output type
+- `UsageEventSchema` - Zod schema for output
+
+**Documentation Updated:**
+- `.claude/skills/project-context/references/module-patterns.md` - Added usage tracking pattern with examples
+- `.claude/skills/project-context/references/architecture-map.md` - Updated Ledger section with new exports
+- `tasks/INDEX.md` - Moved task to completed

@@ -138,13 +138,20 @@ export async function generateScope(input: unknown) {
   })
 
   // 4. Record usage
-  await recordUsage({
+  const usageResult = await recordUsage({
+    action: 'agency:scope:generate',
     tenantId: session.tenant?.id,
     userId: session.user.id,
-    action: 'agency:scope:generate',
-    tokens: result.usage.totalTokens,
-    cost: 50, // Brain Units
+    moduleId: 'agency',
+    tokensInput: result.usage.promptTokens,
+    tokensOutput: result.usage.completionTokens,
+    units: 50, // Brain Units
+    durationMs: result.durationMs,
   })
+
+  if (!usageResult.success) {
+    console.error('Failed to record usage:', usageResult.error)
+  }
 
   // 5. Save to database with tenant_id and user_id
   const supabase = createServerClient(...)
@@ -325,27 +332,45 @@ await supabase
 // RLS provides additional protection at database level
 ```
 
-## Usage Tracking Pattern
+## Usage Tracking Pattern (TASK-1-08)
+
+**CRITICAL:** Always use `recordUsage()` after AI operations. Never write to `usage_events` table directly.
 
 ```typescript
 import { recordUsage } from '@appdistillery/core/ledger'
+import type { RecordUsageInput } from '@appdistillery/core/ledger'
 
 // After any billable AI operation
-await recordUsage({
-  tenantId: session.tenant?.id, // null for personal users
-  userId: session.user.id,
-  action: 'agency:scope:generate',
-  tokens: result.usage.totalTokens,
-  inputTokens: result.usage.promptTokens,
-  outputTokens: result.usage.completionTokens,
-  cost: 50, // Brain Units
-  durationMs: result.durationMs,
-  metadata: {
+const result = await recordUsage({
+  action: 'agency:scope:generate',     // Required: module:domain:verb
+  tenantId: session.tenant?.id,        // Optional: null for personal users
+  userId: session.user.id,             // Optional: tracks user who triggered
+  moduleId: 'agency',                  // Optional: module that triggered
+  tokensInput: result.usage.promptTokens,    // Optional: default 0
+  tokensOutput: result.usage.completionTokens, // Optional: default 0
+  units: 50,                           // Optional: Brain Units cost, default 0
+  durationMs: result.durationMs,       // Optional: operation duration
+  metadata: {                          // Optional: JSON object
     leadId: input.leadId,
     model: 'claude-3-5-sonnet',
   },
 })
+
+// Result is discriminated union
+if (result.success) {
+  console.log('Usage recorded:', result.data.id)
+  console.log('Total tokens:', result.data.tokensTotal)
+} else {
+  console.error('Failed to record usage:', result.error)
+}
 ```
+
+**Key Points:**
+- `action` must follow format: `module:domain:verb` (validated with regex)
+- `tenantId` is nullable for Personal mode (users without active tenant)
+- Uses service role client to bypass RLS (system operation)
+- Returns discriminated union: `{ success: true, data }` or `{ success: false, error }`
+- `tokensTotal` is computed column (tokens_input + tokens_output)
 
 ## File Organization
 
