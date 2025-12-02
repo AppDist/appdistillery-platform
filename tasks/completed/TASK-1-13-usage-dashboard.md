@@ -4,8 +4,9 @@ title: Usage dashboard component
 priority: P2-Medium
 complexity: 2
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+completed: 2025-12-02
 ---
 
 # TASK-1-13: Usage dashboard component
@@ -16,12 +17,12 @@ Create a usage dashboard page showing organization's AI usage statistics and his
 
 ## Acceptance Criteria
 
-- [ ] Dashboard page at /dashboard/usage
-- [ ] Usage summary cards (tokens, events)
-- [ ] Usage chart (daily/weekly trend)
-- [ ] Recent activity list
-- [ ] Filter by date range
-- [ ] Responsive layout
+- [x] Dashboard page at /dashboard/usage
+- [x] Usage summary cards (tokens, events)
+- [x] Usage chart (daily/weekly trend)
+- [x] Recent activity list
+- [x] Filter by date range
+- [x] Responsive layout
 
 ## Technical Notes
 
@@ -96,3 +97,29 @@ function RecentActivity({ events }: { events: UsageEvent[] }) {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Completed: Full usage dashboard implementation |
+
+## Implementation Notes
+
+### Files Created
+- `apps/web/src/app/(dashboard)/usage/page.tsx` - Main dashboard page
+- `apps/web/src/app/(dashboard)/usage/usage-summary.tsx` - Summary cards (4 metrics)
+- `apps/web/src/app/(dashboard)/usage/usage-chart.tsx` - Area chart with recharts
+- `apps/web/src/app/(dashboard)/usage/recent-activity.tsx` - Activity table
+- `apps/web/src/app/(dashboard)/usage/period-selector.tsx` - Period filter dropdown
+- `apps/web/src/components/ui/table.tsx` - shadcn table component
+- `apps/web/src/components/ui/select.tsx` - shadcn select component
+- `apps/web/src/components/ui/calendar.tsx` - shadcn calendar component
+- `apps/web/src/components/ui/popover.tsx` - shadcn popover component
+
+### Features
+- Usage summary with 4 cards (tokens, units, events, top action)
+- Area chart showing tokens and Brain Units over time
+- Recent activity table with relative timestamps
+- Period selector (Today, This Week, This Month)
+- Responsive grid layouts
+- Suspense boundaries with skeleton loaders
+- Accessibility: ARIA labels, sr-only text, semantic HTML
+
+### Packages Added
+- recharts (^3.5.1) for chart visualization
