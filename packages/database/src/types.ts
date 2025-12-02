@@ -181,6 +181,59 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_events: {
+        Row: {
+          action: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          metadata: Json
+          module_id: string | null
+          tenant_id: string | null
+          tokens_input: number
+          tokens_output: number
+          tokens_total: number | null
+          units: number
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          metadata?: Json
+          module_id?: string | null
+          tenant_id?: string | null
+          tokens_input?: number
+          tokens_output?: number
+          tokens_total?: number | null
+          units?: number
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          metadata?: Json
+          module_id?: string | null
+          tenant_id?: string | null
+          tokens_input?: number
+          tokens_output?: number
+          tokens_total?: number | null
+          units?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null

@@ -4,8 +4,9 @@ title: Usage events table + RLS
 priority: P1-High
 complexity: 2
 module: database
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+completed: 2025-12-02
 ---
 
 # TASK-1-07: Usage events table + RLS
@@ -16,13 +17,13 @@ Create usage_events table for tracking AI usage and billable actions per tenant.
 
 ## Acceptance Criteria
 
-- [ ] usage_events table created
-- [ ] Indexes for common queries (tenant_id, created_at)
-- [ ] RLS policies for tenant isolation
-- [ ] Support for token counts and metadata
-- [ ] Support NULL tenant_id (users in "Personal" mode)
-- [ ] TypeScript types generated
-- [ ] Migration follows naming convention
+- [x] usage_events table created
+- [x] Indexes for common queries (tenant_id, created_at)
+- [x] RLS policies for tenant isolation
+- [x] Support for token counts and metadata
+- [x] Support NULL tenant_id (users in "Personal" mode)
+- [x] TypeScript types generated
+- [x] Migration follows naming convention
 
 ## Technical Notes
 
@@ -91,3 +92,16 @@ create policy "Authenticated can insert usage"
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Migration created with full schema, indexes, and RLS policies |
+| 2025-12-02 | TypeScript types generated |
+| 2025-12-02 | Task completed |
+
+## Implementation Summary
+
+Created migration `20251202131205_create_usage_events.sql` with:
+- Complete table schema with tenant isolation support
+- Generated column for `tokens_total` (computed from input + output)
+- Four indexes for common query patterns (tenant, action, user, module)
+- Three RLS policies: tenant member access, personal mode access, service role bypass
+- Comprehensive SQL comments documenting all fields
+- Support for both tenant-scoped and Personal mode usage (nullable tenant_id)

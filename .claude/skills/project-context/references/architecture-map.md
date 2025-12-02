@@ -78,6 +78,16 @@ The `@appdistillery/core` package exports four distinct services:
 - Brain Units (BU) as internal currency
 - Query helpers: `getUsageHistory()`, `getUsageSummary()`
 
+**Usage Events Table (TASK-1-07):**
+- Tracks AI usage and billable actions per tenant
+- `id`, `tenant_id` (nullable for Personal mode), `user_id`
+- `action` (format: `module:domain:verb`), `module_id`
+- `tokens_input`, `tokens_output`, `tokens_total` (computed)
+- `units` (Brain Units for billing), `duration_ms`
+- `metadata` JSONB, `created_at`
+- RLS policies for tenant isolation + Personal mode access
+- Immutable audit records (no UPDATE/DELETE for users)
+
 ### 4. Modules (`@appdistillery/core/modules`) - TASK-1-06
 
 **Module Registry System:**
