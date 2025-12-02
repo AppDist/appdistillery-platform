@@ -130,24 +130,23 @@ export async function brainHandle<T extends z.ZodType>(
 
     if (!result.success) {
       // Record failed attempt (units: 0 for analytics)
-      try {
-        await recordUsage({
-          action,
-          tenantId: task.tenantId,
-          userId: task.userId,
-          moduleId: task.moduleId,
-          tokensInput: 0,
-          tokensOutput: 0,
-          units: 0,
-          durationMs,
-          metadata: {
-            task: task.taskType,
-            failed: true,
-            error: result.error,
-          },
-        });
-      } catch (recordError) {
-        console.error('[brainHandle] Failed to record usage:', recordError);
+      const failedUsageResult = await recordUsage({
+        action,
+        tenantId: task.tenantId,
+        userId: task.userId,
+        moduleId: task.moduleId,
+        tokensInput: 0,
+        tokensOutput: 0,
+        units: 0,
+        durationMs,
+        metadata: {
+          task: task.taskType,
+          failed: true,
+          error: result.error,
+        },
+      });
+      if (!failedUsageResult.success) {
+        console.error('[brainHandle] Failed to record usage:', failedUsageResult.error);
       }
 
       return {
@@ -160,21 +159,20 @@ export async function brainHandle<T extends z.ZodType>(
     // Calculate Brain Units cost
     const units = calculateUnits(task.taskType, result.usage.totalTokens);
 
-    // Record successful usage - catch errors silently to not lose generated data
-    try {
-      await recordUsage({
-        action,
-        tenantId: task.tenantId,
-        userId: task.userId,
-        moduleId: task.moduleId,
-        tokensInput: result.usage.promptTokens,
-        tokensOutput: result.usage.completionTokens,
-        units,
-        durationMs,
-        metadata: { task: task.taskType },
-      });
-    } catch (recordError) {
-      console.error('[brainHandle] Failed to record usage:', recordError);
+    // Record successful usage - log errors but don't lose generated data
+    const usageResult = await recordUsage({
+      action,
+      tenantId: task.tenantId,
+      userId: task.userId,
+      moduleId: task.moduleId,
+      tokensInput: result.usage.promptTokens,
+      tokensOutput: result.usage.completionTokens,
+      units,
+      durationMs,
+      metadata: { task: task.taskType },
+    });
+    if (!usageResult.success) {
+      console.error('[brainHandle] Failed to record usage:', usageResult.error);
     }
 
     return {
@@ -193,25 +191,24 @@ export async function brainHandle<T extends z.ZodType>(
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
 
-    // Record failure (units: 0) - catch errors silently to not break the flow
-    try {
-      await recordUsage({
-        action,
-        tenantId: task.tenantId,
-        userId: task.userId,
-        moduleId: task.moduleId,
-        tokensInput: 0,
-        tokensOutput: 0,
-        units: 0,
-        durationMs,
-        metadata: {
-          task: task.taskType,
-          failed: true,
-          error: errorMessage,
-        },
-      });
-    } catch (recordError) {
-      console.error('[brainHandle] Failed to record usage:', recordError);
+    // Record failure (units: 0) - log errors but don't break the flow
+    const errorUsageResult = await recordUsage({
+      action,
+      tenantId: task.tenantId,
+      userId: task.userId,
+      moduleId: task.moduleId,
+      tokensInput: 0,
+      tokensOutput: 0,
+      units: 0,
+      durationMs,
+      metadata: {
+        task: task.taskType,
+        failed: true,
+        error: errorMessage,
+      },
+    });
+    if (!errorUsageResult.success) {
+      console.error('[brainHandle] Failed to record usage:', errorUsageResult.error);
     }
 
     return {

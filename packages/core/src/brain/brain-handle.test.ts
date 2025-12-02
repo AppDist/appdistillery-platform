@@ -27,6 +27,24 @@ type TestOutput = z.infer<typeof TestSchema>;
 describe('brainHandle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock: recordUsage returns success
+    vi.mocked(recordUsage).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'event-123',
+        action: 'test:action:generate',
+        tenantId: null,
+        userId: null,
+        moduleId: 'test',
+        tokensInput: 0,
+        tokensOutput: 0,
+        tokensTotal: 0,
+        units: 0,
+        durationMs: 100,
+        metadata: {},
+        createdAt: new Date().toISOString(),
+      },
+    });
   });
 
   describe('Success path', () => {
@@ -438,9 +456,11 @@ describe('brainHandle', () => {
       vi.mocked(generateStructured).mockRejectedValue(
         new Error('Adapter error')
       );
-      vi.mocked(recordUsage).mockRejectedValue(
-        new Error('Database connection failed')
-      );
+      // recordUsage returns error result (doesn't throw)
+      vi.mocked(recordUsage).mockResolvedValue({
+        success: false,
+        error: 'Database connection failed',
+      });
 
       const result = await brainHandle({
         moduleId: 'agency',
@@ -456,32 +476,13 @@ describe('brainHandle', () => {
         expect(result.error).toBe('Adapter error');
       }
 
-      // Should log the recordUsage error
+      // Should log the recordUsage error string
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[brainHandle] Failed to record usage:',
-        expect.any(Error)
+        'Database connection failed'
       );
 
       consoleErrorSpy.mockRestore();
-
-      // Reset recordUsage mock for other tests
-      vi.mocked(recordUsage).mockResolvedValue({
-        success: true,
-        data: {
-          id: 'event-123',
-          action: 'agency:scope:generate',
-          tenantId: null,
-          userId: null,
-          moduleId: 'agency',
-          tokensInput: 0,
-          tokensOutput: 0,
-          tokensTotal: 0,
-          units: 0,
-          durationMs: 100,
-          metadata: {},
-          createdAt: new Date().toISOString(),
-        },
-      });
     });
   });
 
