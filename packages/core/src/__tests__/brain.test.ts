@@ -16,9 +16,10 @@ describe('brain module', () => {
       })
 
       const task: BrainTask<typeof schema> = {
-        orgId: 'org-123',
+        tenantId: 'org-123',
+        userId: 'user-456',
         moduleId: 'agency',
-        taskType: 'scope.generate',
+        taskType: 'agency.scope',
         systemPrompt: 'You are a project scoping assistant.',
         userPrompt: 'Analyze this project request.',
         schema,
@@ -28,7 +29,7 @@ describe('brain module', () => {
         },
       }
 
-      expect(task.orgId).toBe('org-123')
+      expect(task.tenantId).toBe('org-123')
       expect(task.moduleId).toBe('agency')
       expect(task.options?.maxTokens).toBe(1000)
     })
@@ -37,9 +38,9 @@ describe('brain module', () => {
       const schema = z.object({ result: z.string() })
 
       const task: BrainTask<typeof schema> = {
-        orgId: 'org-456',
+        tenantId: 'org-456',
         moduleId: 'agency',
-        taskType: 'proposal.draft',
+        taskType: 'agency.proposal',
         systemPrompt: 'You are a proposal writer.',
         userPrompt: 'Write a proposal.',
         schema,
@@ -50,19 +51,23 @@ describe('brain module', () => {
   })
 
   describe('brainHandle', () => {
-    it('should throw not implemented error (Phase 1 stub)', async () => {
+    it('should return error for invalid task type format', async () => {
       const schema = z.object({ result: z.string() })
 
       const task: BrainTask<typeof schema> = {
-        orgId: 'org-789',
+        tenantId: 'org-789',
         moduleId: 'agency',
-        taskType: 'test',
+        taskType: 'invalid-format',
         systemPrompt: 'Test prompt',
         userPrompt: 'Test input',
         schema,
       }
 
-      await expect(brainHandle(task)).rejects.toThrow('Not implemented - Phase 1')
+      const result = await brainHandle(task)
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toContain('Invalid taskType format')
+      }
     })
   })
 
@@ -71,12 +76,20 @@ describe('brain module', () => {
       const result: BrainResult<{ summary: string }> = {
         success: true,
         data: { summary: 'Test summary' },
-        usage: { tokens: 500, durationMs: 1200 },
+        usage: {
+          promptTokens: 100,
+          completionTokens: 400,
+          totalTokens: 500,
+          durationMs: 1200,
+          units: 50,
+        },
       }
 
       expect(result.success).toBe(true)
-      expect(result.data?.summary).toBe('Test summary')
-      expect(result.error).toBeUndefined()
+      if (result.success) {
+        expect(result.data.summary).toBe('Test summary')
+        expect(result.usage.totalTokens).toBe(500)
+      }
     })
 
     it('should represent a failed result', () => {
@@ -87,8 +100,9 @@ describe('brain module', () => {
       }
 
       expect(result.success).toBe(false)
-      expect(result.data).toBeUndefined()
-      expect(result.error).toBe('API rate limit exceeded')
+      if (!result.success) {
+        expect(result.error).toBe('API rate limit exceeded')
+      }
     })
   })
 })

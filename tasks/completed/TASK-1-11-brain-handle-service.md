@@ -4,8 +4,10 @@ title: brainHandle() service
 priority: P1-High
 complexity: 3
 module: core
-status: BACKLOG
+status: COMPLETED
 created: 2024-11-30
+started: 2025-12-02
+completed: 2025-12-02
 ---
 
 # TASK-1-11: brainHandle() service
@@ -16,12 +18,12 @@ Create brainHandle() service as the central AI router that handles prompts, gene
 
 ## Acceptance Criteria
 
-- [ ] brainHandle() function in packages/core
-- [ ] Accepts task, schema, prompt, orgId
-- [ ] Uses Anthropic adapter for generation
-- [ ] Automatically calls recordUsage()
-- [ ] Returns typed object matching schema
-- [ ] Exported from @appdistillery/core/brain
+- [x] brainHandle() function in packages/core
+- [x] Accepts task, schema, prompt, tenantId (renamed from orgId for consistency)
+- [x] Uses Anthropic adapter for generation
+- [x] Automatically calls recordUsage()
+- [x] Returns typed object matching schema (discriminated union)
+- [x] Exported from @appdistillery/core/brain
 
 ## Technical Notes
 
@@ -117,3 +119,4 @@ export async function generateScope(leadId: string, orgId: string) {
 | Date | Update |
 |------|--------|
 | 2024-11-30 | Task created |
+| 2025-12-02 | Completed: Implemented brainHandle with discriminated union returns, 25 unit tests, 3 review rounds passed |

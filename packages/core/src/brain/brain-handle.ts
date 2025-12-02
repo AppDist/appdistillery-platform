@@ -160,18 +160,22 @@ export async function brainHandle<T extends z.ZodType>(
     // Calculate Brain Units cost
     const units = calculateUnits(task.taskType, result.usage.totalTokens);
 
-    // Record successful usage
-    await recordUsage({
-      action,
-      tenantId: task.tenantId,
-      userId: task.userId,
-      moduleId: task.moduleId,
-      tokensInput: result.usage.promptTokens,
-      tokensOutput: result.usage.completionTokens,
-      units,
-      durationMs,
-      metadata: { task: task.taskType },
-    });
+    // Record successful usage - catch errors silently to not lose generated data
+    try {
+      await recordUsage({
+        action,
+        tenantId: task.tenantId,
+        userId: task.userId,
+        moduleId: task.moduleId,
+        tokensInput: result.usage.promptTokens,
+        tokensOutput: result.usage.completionTokens,
+        units,
+        durationMs,
+        metadata: { task: task.taskType },
+      });
+    } catch (recordError) {
+      console.error('[brainHandle] Failed to record usage:', recordError);
+    }
 
     return {
       success: true,
