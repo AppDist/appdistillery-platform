@@ -80,8 +80,8 @@ cd appdistillery-platform
 # Install dependencies
 pnpm install
 
-# Copy environment variables
-cp .env.example .env.local
+# Copy environment variables (note: goes in apps/web/, not root)
+cp .env.example apps/web/.env.local
 
 # Start local Supabase
 supabase start
@@ -98,16 +98,22 @@ pnpm dev
 
 ### Environment Variables
 
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-local-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
+Environment variables live in `apps/web/.env.local` (not root). See `.env.example` for the template.
 
-# AI Providers (add as needed)
+```bash
+# Supabase (new key format)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+SUPABASE_SECRET_KEY=sb_secret_xxx
+
+# AI Provider
 ANTHROPIC_API_KEY=your-key
-OPENAI_API_KEY=your-key
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+**Why `apps/web/`?** Next.js only loads `.env.local` from its own directory, not the monorepo root. Each app in a monorepo owns its environment config.
 
 ## Development
 

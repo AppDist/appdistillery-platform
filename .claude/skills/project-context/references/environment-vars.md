@@ -2,9 +2,13 @@
 
 ## Overview
 
-Environment variables are managed via `.env.local` (development) and Vercel/deployment platform (production).
+Environment variables are managed **per-app** following Next.js conventions:
 
-**Template file:** `.env.example`
+- **Development:** `apps/web/.env.local`
+- **Production:** Vercel/deployment platform
+- **Template:** `.env.example` (root, committed)
+
+**Important:** Next.js only loads `.env.local` from its own directory (`apps/web/`), not the monorepo root. This is intentional - each app owns its environment config.
 
 ## Required Variables
 
@@ -74,9 +78,9 @@ These are planned for future phases:
 
 ### Development
 
-1. Copy template:
+1. Copy template to the web app directory:
    ```bash
-   cp .env.example .env.local
+   cp .env.example apps/web/.env.local
    ```
 
 2. Fill in values from:
@@ -87,6 +91,20 @@ These are planned for future phases:
    ```bash
    pnpm dev
    ```
+
+### Env Validation
+
+The web app includes Zod-based validation in `apps/web/src/lib/env.ts`:
+
+```typescript
+import { clientEnv, serverEnv } from '@/lib/env';
+
+// Type-safe access with validation at startup
+const url = clientEnv.NEXT_PUBLIC_SUPABASE_URL;
+const secret = serverEnv.SUPABASE_SECRET_KEY;
+```
+
+Missing or invalid env vars will fail fast with clear Zod errors.
 
 ### Production (Vercel)
 

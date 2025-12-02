@@ -37,6 +37,16 @@ modules/agency/     → First module (consultancy tool)
 
 **Tenant Isolation:** All queries must include `org_id` filter. RLS policies enforce this at database level.
 
+## Environment Setup
+
+Env vars live in `apps/web/.env.local` (not root). Template: `.env.example`
+
+```bash
+cp .env.example apps/web/.env.local
+```
+
+**Why?** Next.js only loads `.env.local` from its own directory in a monorepo.
+
 ## Critical Rules
 
 | Never | Always |
@@ -47,6 +57,7 @@ modules/agency/     → First module (consultancy tool)
 | Return raw JSON from AI prompts | Use `generateObject` with Zod schema |
 | Duplicate Zod schemas | Import from `modules/*/schemas/` |
 | Import across modules | Use Core services or events |
+| Put `.env.local` at monorepo root | Put it in `apps/web/.env.local` |
 
 ## Naming Conventions
 
