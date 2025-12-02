@@ -8,8 +8,8 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Completed | 8 |
-| Phase 1 | Backlog | 9 |
+| Phase 1 | Completed | 9 |
+| Phase 1 | Backlog | 8 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
 | **Total** | | **31** |
@@ -75,9 +75,16 @@ All usage ledger tasks completed in Phase 1.
 
 ### Brain (AI Router)
 
+#### Completed
+
+| ID | Title | Complexity |
+|----|-------|------------|
+| [TASK-1-10](completed/TASK-1-10-anthropic-adapter.md) | Anthropic adapter | 3 |
+
+#### Backlog
+
 | ID | Title | Priority | Complexity |
 |----|-------|----------|------------|
-| [TASK-1-10](backlog/TASK-1-10-anthropic-adapter.md) | Anthropic adapter | P1-High | 3 |
 | [TASK-1-10a](backlog/TASK-1-10a-openai-adapter.md) | OpenAI adapter | P1-High | 2 |
 | [TASK-1-10b](backlog/TASK-1-10b-google-adapter.md) | Google Gemini adapter | P1-High | 2 |
 | [TASK-1-11](backlog/TASK-1-11-brain-handle-service.md) | brainHandle() service | P1-High | 3 |
