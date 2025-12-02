@@ -5,6 +5,7 @@
  * All adapters provide structured output generation with Zod schemas.
  */
 
+// Anthropic adapter
 export {
   generateStructured,
   ANTHROPIC_MODELS,
@@ -12,3 +13,11 @@ export {
   type GenerateResult,
   type AnthropicModel,
 } from './anthropic';
+
+// OpenAI adapter
+export {
+  generateStructuredWithOpenAI,
+  OPENAI_MODELS,
+  type GenerateOptionsWithOpenAI,
+  type OpenAIModel,
+} from './openai';

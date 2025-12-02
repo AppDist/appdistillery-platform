@@ -2,11 +2,18 @@
 
 ## Overview
 
-The Brain Adapter module provides AI model integrations using the Vercel AI SDK. Currently implements Anthropic Claude adapter with support for structured output generation, automatic retry logic, and token counting.
+The Brain Adapter module provides AI model integrations using the Vercel AI SDK. Implements multiple adapters (Anthropic Claude, OpenAI GPT) with support for structured output generation, automatic retry logic, and token counting.
 
 ## Location
 
 `packages/core/src/brain/adapters/`
+
+## Available Adapters
+
+- **Anthropic** - Claude models (3.5, 4, 4.5)
+- **OpenAI** - GPT models (GPT-4, GPT-4o, o1)
+
+---
 
 ## Modules
 
@@ -103,6 +110,99 @@ Server-side: Full error details are logged with `[generateStructured]` prefix.
 
 ---
 
+### OpenAI Adapter
+
+Structured output generation using OpenAI GPT models.
+
+#### `generateStructuredWithOpenAI<T>(options: GenerateOptionsWithOpenAI<T>): Promise<GenerateResult<T>>`
+
+Generate structured output using OpenAI GPT with automatic retry logic and token counting.
+
+**Input Schema: `GenerateOptionsWithOpenAI<T>`**
+
+```typescript
+interface GenerateOptionsWithOpenAI<T extends z.ZodType> {
+  schema: T;                    // Zod schema for output validation
+  prompt: string;               // Main prompt text
+  system?: string;              // System message (optional)
+  model?: string;               // Model ID (default: gpt-5-mini)
+  maxTokens?: number;           // Max output tokens (default: 4000)
+  temperature?: number;         // Sampling temperature (default: 0.7)
+}
+```
+
+**Output Type: `GenerateResult<T>`**
+
+```typescript
+type GenerateResult<T> =
+  | {
+      success: true;
+      object: T;
+      usage: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+      };
+    }
+  | {
+      success: false;
+      error: string; // Sanitized error message
+    };
+```
+
+**Example:**
+
+```typescript
+import { generateStructuredWithOpenAI, OPENAI_MODELS } from '@appdistillery/core/brain/adapters';
+import { z } from 'zod';
+
+const OutputSchema = z.object({
+  summary: z.string().describe('Brief summary'),
+  keyPoints: z.array(z.string()).describe('Main points'),
+  confidence: z.number().min(0).max(1).describe('Confidence score'),
+});
+
+const result = await generateStructuredWithOpenAI({
+  schema: OutputSchema,
+  prompt: 'Analyze this proposal for quality and completeness...',
+  system: 'You are an expert business analyst.',
+  model: OPENAI_MODELS.GPT_5_MINI,
+  maxTokens: 2000,
+  temperature: 0.3, // Low temperature for consistency
+});
+
+if (result.success) {
+  console.log(result.object.summary);
+  console.log(`Used ${result.usage.totalTokens} tokens`);
+} else {
+  console.error(`Error: ${result.error}`);
+}
+```
+
+**Error Handling:**
+
+Client-safe error messages are returned automatically:
+
+| Error Type | Client Message |
+|------------|---|
+| Rate limit (429) | "Rate limit exceeded. Please try again later." |
+| Timeout | "Request timed out. Please try again." |
+| API error | "API error occurred." |
+| Other | "Generation failed. Please try again." |
+
+Server-side: Full error details are logged with `[generateStructuredWithOpenAI]` prefix.
+
+**Retry Behavior:**
+
+- **Max retries:** 3 attempts
+- **Backoff:** Exponential (1s → 2s → 4s, max 10s)
+- **Retryable errors:** HTTP 429, 502, 503, 504, rate limit, timeout
+- **Non-retryable:** Schema validation, other API errors (fail immediately)
+
+**Usage Cost:** Depends on tokens used. Tracked via `recordUsage()` from `@appdistillery/core/ledger`.
+
+---
+
 ## Model Constants
 
 ### `ANTHROPIC_MODELS`
@@ -138,13 +238,44 @@ type AnthropicModel = typeof ANTHROPIC_MODELS[keyof typeof ANTHROPIC_MODELS];
 - **Cost-sensitive:** `HAIKU_4_5` (fast, cheaper)
 - **Consistency required:** Lower temperature (0.1-0.3)
 
+### `OPENAI_MODELS`
+
+All available OpenAI model versions:
+
+```typescript
+export const OPENAI_MODELS = {
+  // GPT-5 Family (Current - 2025)
+  GPT_5_1: 'gpt-5.1',           // Frontier reasoning, complex tasks
+  GPT_5_MINI: 'gpt-5-mini',     // General tasks, balanced (DEFAULT)
+  GPT_5_NANO: 'gpt-5-nano',     // Simple extraction, high-volume
+
+  // GPT-4.1 Family (Previous)
+  GPT_4_1: 'gpt-4.1',           // 1M context
+  GPT_4_1_MINI: 'gpt-4.1-mini', // 128K context
+
+  // Reasoning Models (o-series)
+  O3: 'o3',                      // Mathematical reasoning
+  O3_MINI: 'o3-mini',            // Lightweight reasoning
+} as const;
+
+type OpenAIModel = typeof OPENAI_MODELS[keyof typeof OPENAI_MODELS];
+```
+
+**Recommendations:**
+
+- **General tasks:** `GPT_5_MINI` (default, balanced)
+- **Complex reasoning:** `GPT_5_1` (frontier model)
+- **Cost-sensitive:** `GPT_5_NANO` (simple extraction, high-volume)
+- **Mathematical reasoning:** `O3` or `O3_MINI` (specialized reasoning)
+- **Consistency required:** Lower temperature (0.1-0.3)
+
 ---
 
 ## Environment Variables
 
 ### `ANTHROPIC_API_KEY`
 
-Required for all adapter operations.
+Required for Anthropic adapter operations.
 
 ```bash
 # .env.local
@@ -155,6 +286,21 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ```
 ANTHROPIC_API_KEY environment variable is required. Add it to your .env.local file.
+```
+
+### `OPENAI_API_KEY`
+
+Required for OpenAI adapter operations.
+
+```bash
+# .env.local
+OPENAI_API_KEY=sk-...
+```
+
+**Error if missing:**
+
+```
+OPENAI_API_KEY environment variable is required. Add it to your .env.local file.
 ```
 
 ---
@@ -243,7 +389,7 @@ pnpm test --filter @appdistillery/core adapters
 
 ### Singleton Client
 
-Anthropic client is cached after first creation for performance:
+Both adapters cache their clients after first creation for performance:
 
 ```typescript
 // First call: creates client
@@ -251,14 +397,19 @@ const result1 = await generateStructured({...});
 
 // Subsequent calls: reuse cached client
 const result2 = await generateStructured({...});
+
+// Same pattern with OpenAI adapter
+const result3 = await generateStructuredWithOpenAI({...});
 ```
 
 ### Discriminated Union Result
 
-Type-safe error handling without exceptions:
+Type-safe error handling without exceptions in both adapters:
 
 ```typescript
 const result = await generateStructured({...});
+// or
+const result = await generateStructuredWithOpenAI({...});
 
 if (result.success) {
   // result.object and result.usage are available
@@ -276,6 +427,9 @@ Full errors logged server-side, generic messages returned to clients:
 ```
 Server log: [generateStructured] Error: Rate limit exceeded (429)
 Client receives: "Rate limit exceeded. Please try again later."
+
+Server log: [generateStructuredWithOpenAI] Error: Rate limit exceeded (429)
+Client receives: "Rate limit exceeded. Please try again later."
 ```
 
 ---
@@ -291,11 +445,26 @@ Client receives: "Rate limit exceeded. Please try again later."
 
 ## Version History
 
+### v1.2 (2025-12-02)
+
+- Updated OpenAI adapter to GPT-5 and o3 models
+- Changed default model to `gpt-5-mini` (general tasks, balanced)
+- Added GPT-5 family: `gpt-5.1`, `gpt-5-mini`, `gpt-5-nano`
+- Added GPT-4.1 family: `gpt-4.1`, `gpt-4.1-mini`
+- Updated reasoning models: `o3`, `o3-mini`
+
+### v1.1 (2025-12-02)
+
+- Added OpenAI GPT adapter
+- Support for GPT-4o, GPT-4o-mini, o1, o1-mini, and GPT-4-turbo models
+- Matching feature parity with Anthropic adapter
+- Both adapters follow same patterns and conventions
+
 ### v1.0 (2025-12-02)
 
-- Initial release
-- Anthropic Claude adapter with structured output
-- Retry logic with exponential backoff
+- Initial release with Anthropic Claude adapter
+- Structured output generation with Zod schemas
+- Retry logic with exponential backoff (max 10s)
 - Token counting and usage tracking
-- Error sanitization
+- Error sanitization for security
 - Support for all Claude model versions (3-4.5)
