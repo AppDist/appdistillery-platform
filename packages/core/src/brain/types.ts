@@ -38,6 +38,10 @@ export interface BrainTask<T extends z.ZodType = z.ZodType> {
     temperature?: number;
     /** Request timeout in milliseconds (default: 60000ms) */
     timeoutMs?: number;
+    /** Enable response caching (default: true) */
+    useCache?: boolean;
+    /** Cache TTL in milliseconds (default: 3600000 = 1 hour) */
+    cacheTTL?: number;
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { brainHandle } from './brain-handle';
+import { clearCache, getCacheStats } from './cache';
 import type { GenerateResult } from './adapters/anthropic';
 
 // Mock dependencies
@@ -27,6 +28,7 @@ type TestOutput = z.infer<typeof TestSchema>;
 describe('brainHandle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearCache();
     // Default mock: recordUsage returns success
     vi.mocked(recordUsage).mockResolvedValue({
       success: true,
@@ -169,7 +171,7 @@ describe('brainHandle', () => {
         tokensOutput: 250,
         units: 50, // Known task type
         durationMs: expect.any(Number),
-        metadata: { task: 'agency.scope' },
+        metadata: { task: 'agency.scope', cached: false },
       });
     });
   });
@@ -742,6 +744,223 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(true);
       expect(generateStructured).toHaveBeenCalled();
+    });
+  });
+
+  describe('Response caching', () => {
+    it('caches successful responses by default', async () => {
+      const mockOutput: TestOutput = { title: 'Cached', count: 99 };
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: mockOutput,
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      const result1 = await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(result1.success).toBe(true);
+      expect(generateStructured).toHaveBeenCalledTimes(1);
+
+      const stats = getCacheStats();
+      expect(stats.size).toBe(1);
+    });
+
+    it('returns cached response on second identical call without hitting AI', async () => {
+      const mockOutput: TestOutput = { title: 'Cached', count: 99 };
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: mockOutput,
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      // First call - hits AI
+      const result1 = await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(result1.success).toBe(true);
+      expect(generateStructured).toHaveBeenCalledTimes(1);
+
+      // Second identical call - uses cache
+      const result2 = await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data).toEqual(mockOutput);
+      }
+      expect(generateStructured).toHaveBeenCalledTimes(1); // Not called again
+    });
+
+    it('skips cache when useCache is false', async () => {
+      const mockOutput: TestOutput = { title: 'Not cached', count: 42 };
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: mockOutput,
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { useCache: false },
+      });
+
+      const stats = getCacheStats();
+      expect(stats.size).toBe(0);
+    });
+
+    it('does not use cache on second call when useCache is false', async () => {
+      const mockOutput: TestOutput = { title: 'Not cached', count: 42 };
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: mockOutput,
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { useCache: false },
+      });
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { useCache: false },
+      });
+
+      expect(generateStructured).toHaveBeenCalledTimes(2);
+    });
+
+    it('generates different cache keys for different prompts', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 1 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User1',
+        schema: TestSchema,
+      });
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User2',
+        schema: TestSchema,
+      });
+
+      expect(generateStructured).toHaveBeenCalledTimes(2);
+      const stats = getCacheStats();
+      expect(stats.size).toBe(2);
+    });
+
+    it('does not cache failed responses', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: false,
+        error: 'API error',
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      const stats = getCacheStats();
+      expect(stats.size).toBe(0);
+    });
+
+    it('includes metadata cached: false in recordUsage for new responses', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 1 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        tenantId: 'tenant-123',
+        userId: 'user-456',
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(recordUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { task: 'agency.scope', cached: false },
+        })
+      );
+    });
+
+    it('respects custom cacheTTL option', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 1 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'agency',
+        taskType: 'agency.scope',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { cacheTTL: 5000 },
+      });
+
+      const stats = getCacheStats();
+      expect(stats.size).toBe(1);
     });
   });
 });

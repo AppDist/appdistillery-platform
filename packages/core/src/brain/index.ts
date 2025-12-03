@@ -8,6 +8,8 @@
  * - Provider abstraction (Anthropic default)
  * - Type-safe error handling via discriminated unions
  *
+ * For streaming support, use brainHandleStream() to get progressive updates.
+ *
  * @example
  * ```typescript
  * import { brainHandle } from '@appdistillery/core/brain';
@@ -28,10 +30,31 @@
  *
  * return result.data; // Typed as z.infer<typeof ScopeResultSchema>
  * ```
+ *
+ * @example Streaming
+ * ```typescript
+ * import { brainHandleStream } from '@appdistillery/core/brain';
+ *
+ * const result = await brainHandleStream({ ...taskConfig });
+ *
+ * if (!result.success) {
+ *   throw new Error(result.error);
+ * }
+ *
+ * for await (const chunk of result.stream) {
+ *   console.log('Partial:', chunk.partial);
+ *   if (chunk.done) {
+ *     console.log('Final:', chunk.partial);
+ *   }
+ * }
+ * ```
  */
 
 // Main brain handle function
 export { brainHandle } from './brain-handle';
+
+// Streaming brain handle function
+export { brainHandleStream, type StreamChunk, type StreamResult } from './brain-handle-stream';
 
 // Types
 export type { BrainTask, BrainResult } from './types';
@@ -55,6 +78,17 @@ export {
   type RateLimitConfig,
   type RateLimitResult,
 } from './rate-limiter';
+
+// Response caching
+export {
+  generateCacheKey,
+  getCachedResponse,
+  setCachedResponse,
+  clearCacheEntry,
+  clearCache,
+  getCacheStats,
+  cleanupExpiredEntries,
+} from './cache';
 
 // Re-export adapters for direct use (advanced cases only)
 export {

@@ -3,6 +3,7 @@ import { generateStructured } from './adapters/anthropic';
 import { recordUsage } from '../ledger';
 import { validatePrompt } from './prompt-sanitizer';
 import { checkRateLimit } from './rate-limiter';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from './cache';
 import type { BrainTask, BrainResult } from './types';
 
 /**
@@ -105,7 +106,30 @@ export async function brainHandle<T extends z.ZodType>(
 ): Promise<BrainResult<z.infer<T>>> {
   const startTime = Date.now();
 
-  // Check rate limit (after startTime, before any processing)
+  // Check cache early (before rate limit, validation, or AI call)
+  const useCache = task.options?.useCache !== false; // Default: true
+  if (useCache) {
+    const cacheKey = generateCacheKey(
+      task.taskType,
+      task.systemPrompt,
+      task.userPrompt,
+      task.schema
+    );
+    const cached = getCachedResponse<z.infer<T>>(cacheKey);
+
+    if (cached) {
+      return {
+        success: true,
+        data: cached.data,
+        usage: {
+          ...cached.usage,
+          durationMs: Date.now() - startTime, // Actual time for cache retrieval
+        },
+      };
+    }
+  }
+
+  // Check rate limit (after cache check, before any processing)
   const rateLimitResult = checkRateLimit(task.tenantId);
   if (!rateLimitResult.allowed) {
     const durationMs = Date.now() - startTime;
@@ -198,10 +222,32 @@ export async function brainHandle<T extends z.ZodType>(
       tokensOutput: result.usage.completionTokens,
       units,
       durationMs,
-      metadata: { task: task.taskType },
+      metadata: { task: task.taskType, cached: false },
     });
     if (!usageResult.success) {
       console.error('[brainHandle] Failed to record usage:', usageResult.error);
+    }
+
+    // Cache the successful result
+    if (useCache) {
+      const cacheKey = generateCacheKey(
+        task.taskType,
+        task.systemPrompt,
+        task.userPrompt,
+        task.schema
+      );
+      setCachedResponse(
+        cacheKey,
+        result.object,
+        {
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+          totalTokens: result.usage.totalTokens,
+          durationMs,
+          units,
+        },
+        task.options?.cacheTTL
+      );
     }
 
     return {
