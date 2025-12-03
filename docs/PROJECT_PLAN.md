@@ -10,9 +10,25 @@
 AppDistillery is a **modular micro-SaaS platform** where private and business users can subscribe to individual modules (micro-apps) on top of a shared Core. A central **Brain** provides AI capabilities across all modules, with usage metered transparently via pooled currency (**Brain Units / BUs**).
 
 ### v0.1 Priorities
-1. **Build a thin Core Kernel** — Identity, Module Registry, Usage Ledger, Brain Router
-2. **Ship the Agency Module first** — Your own consultancy tool (dogfooding + immediate revenue)
+1. **Build a thin Core Kernel** — Identity, Module Registry, Usage Ledger, Brain Router ✅ **COMPLETE**
+2. **Ship the Agency Module first** — Your own consultancy tool (dogfooding + immediate revenue) 🚧 **IN PROGRESS**
 3. **Design for future modules** — Communication Tracker, Marketing, Task Tracker as "slots" only
+
+### Current Status (Dec 2024)
+
+**Phase 0 (Infrastructure):** ✅ Complete (9/9 tasks)
+**Phase 1 (Core Kernel):** ✅ Complete (40/40 tasks) - Foundation ready
+**Phase 2 (Agency Module):** 🚧 Not started (0/14 tasks)
+**Phase 3 (Hardening):** ⏸️ Backlog (1/12 tasks)
+
+**Key Achievements:**
+- Multi-tenant authentication with RLS isolation
+- Brain service with multi-provider support (Anthropic, OpenAI, Google)
+- Usage ledger with Brain Units tracking
+- Module registry system
+- Comprehensive test coverage (>80% Core kernel)
+
+**Next Steps:** Start Phase 2 (Agency Module implementation)
 
 ### Key Differentiators
 - **EU-first architecture** — Data residency compliance built-in
@@ -1108,7 +1124,38 @@ After AI generates code, verify:
 
 ---
 
-## 8. Out of Scope (v0.1)
+## 8. Documentation
+
+### Architecture Decisions
+
+Key ADRs documenting major technical decisions:
+
+- **[ADR-001: AI Provider Abstraction](adrs/ADR-001-ai-provider-abstraction.md)** - Why brainHandle() is the only approved interface
+- **[0001: Modular Monolith](decisions/0001-modular-monolith.md)** - Architecture style rationale
+- **[0002: AI Adapter Pattern](decisions/0002-ai-adapter-pattern.md)** - Multi-provider abstraction design
+- **[0003: RLS Helper Functions](decisions/0003-rls-helper-functions.md)** - RLS implementation approach
+- **[0004: Usage Tracking Design](decisions/0004-usage-tracking-design.md)** - Brain Units tracking architecture
+- **[0005: Tenant Context via Cookies](decisions/0005-tenant-context-via-cookies.md)** - Multi-tenancy session handling
+
+### API Documentation
+
+- **[Brain Service API](api/BRAIN.md)** - brainHandle() and brainHandleStream() reference
+- **[Brain Adapter API](api/brain-adapter.md)** - Low-level adapter interface
+
+### Guides
+
+- **[Testing Guide](guides/TESTING.md)** - Running tests, common patterns, TDD workflow
+- **[Module Development Guide](guides/MODULES.md)** - Creating new modules, structure, patterns
+
+### AI Context Files
+
+- **`.claude/CONTEXT.md`** - Session context for AI agents
+- **`CLAUDE.md`** - Project-specific AI instructions
+- **`.claude/INDEX.md`** - Full agent, skill, and command reference
+
+---
+
+## 9. Out of Scope (v0.1)
 
 These are explicitly deferred:
 
