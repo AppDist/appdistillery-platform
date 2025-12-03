@@ -83,7 +83,7 @@ export function sanitizeErrorMessage(error: Error, adapterName: string): string 
   // Return generic message based on error type
   const msg = error.message.toLowerCase()
   if (msg.includes('rate limit')) return 'Rate limit exceeded. Please try again later.'
-  if (msg.includes('timeout')) return 'Request timed out. Please try again.'
+  if (msg.includes('timeout') || msg.includes('timed out')) return 'Request timed out. Please try again.'
   if (msg.includes('api')) return 'API error occurred.'
 
   return 'Generation failed. Please try again.'

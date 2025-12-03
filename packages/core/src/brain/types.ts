@@ -36,6 +36,8 @@ export interface BrainTask<T extends z.ZodType = z.ZodType> {
   options?: {
     maxOutputTokens?: number;
     temperature?: number;
+    /** Request timeout in milliseconds (default: 60000ms) */
+    timeoutMs?: number;
   };
 }
 

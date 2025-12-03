@@ -687,4 +687,61 @@ describe('brainHandle', () => {
       );
     });
   });
+
+  describe('Rate limiting', () => {
+    it('checks rate limit before processing request', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 1 },
+        usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      // Make multiple requests with same tenant
+      const result1 = await brainHandle({
+        tenantId: 'rate-limit-test-tenant',
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      const result2 = await brainHandle({
+        tenantId: 'rate-limit-test-tenant',
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      // Both should succeed (under default limit of 100)
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+    });
+
+    it('allows null tenantId without rate limiting', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 1 },
+        usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      const result = await brainHandle({
+        tenantId: null,
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(result.success).toBe(true);
+      expect(generateStructured).toHaveBeenCalled();
+    });
+  });
 });

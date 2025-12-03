@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { generateStructured } from './adapters/anthropic';
 import { recordUsage } from '../ledger';
 import { validatePrompt } from './prompt-sanitizer';
+import { checkRateLimit } from './rate-limiter';
 import type { BrainTask, BrainResult } from './types';
 
 /**
@@ -103,6 +104,17 @@ export async function brainHandle<T extends z.ZodType>(
   task: BrainTask<T>
 ): Promise<BrainResult<z.infer<T>>> {
   const startTime = Date.now();
+
+  // Check rate limit (after startTime, before any processing)
+  const rateLimitResult = checkRateLimit(task.tenantId);
+  if (!rateLimitResult.allowed) {
+    const durationMs = Date.now() - startTime;
+    return {
+      success: false,
+      error: `Rate limit exceeded. Try again in ${rateLimitResult.retryAfter} seconds`,
+      usage: { durationMs },
+    };
+  }
 
   // Validate and sanitize user prompt
   const promptValidation = validatePrompt(task.userPrompt);

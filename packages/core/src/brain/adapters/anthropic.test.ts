@@ -149,14 +149,17 @@ describe('Anthropic Adapter', () => {
         temperature: 0.5,
       });
 
-      expect(generateObject).toHaveBeenCalledWith({
-        model: expect.any(Object),
-        schema: testSchema,
-        prompt: 'Test prompt',
-        system: 'System message',
-        maxOutputTokens: 1000,
-        temperature: 0.5,
-      });
+      expect(generateObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.any(Object),
+          schema: testSchema,
+          prompt: 'Test prompt',
+          system: 'System message',
+          maxOutputTokens: 1000,
+          temperature: 0.5,
+          abortSignal: expect.any(AbortSignal),
+        })
+      );
     });
 
     it('returns error when API key is missing', async () => {
@@ -346,6 +349,123 @@ describe('Anthropic Adapter', () => {
       if (result.success) {
         expect(result.usage.totalTokens).toBe(150);
       }
+    });
+
+    it('passes custom timeout to generateObject', async () => {
+      vi.mocked(generateObject).mockResolvedValue(
+        createMockResult(
+          { summary: 'test', items: [] },
+          { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
+        )
+      );
+
+      await generateStructured({
+        schema: testSchema,
+        prompt: 'Test prompt',
+        timeoutMs: 30000,
+      });
+
+      expect(generateObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          abortSignal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    it('times out after specified duration', async () => {
+      vi.useFakeTimers();
+
+      // Mock a request that respects abort signal
+      vi.mocked(generateObject).mockImplementation(
+        ({ abortSignal }: any) => {
+          return new Promise((_, reject) => {
+            if (abortSignal) {
+              abortSignal.addEventListener('abort', () => {
+                const error = new Error('Aborted');
+                error.name = 'AbortError';
+                reject(error);
+              });
+            }
+            // Simulate long-running operation
+            setTimeout(() => {}, 100000);
+          });
+        }
+      );
+
+      const resultPromise = generateStructured({
+        schema: testSchema,
+        prompt: 'Test prompt',
+        timeoutMs: 1000, // 1 second timeout
+      });
+
+      // Fast-forward time to trigger timeout
+      await vi.advanceTimersByTimeAsync(1000);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        // The sanitize function checks for 'timeout' in lowercase
+        expect(result.error).toBe('Request timed out. Please try again.');
+      }
+
+      vi.useRealTimers();
+    });
+
+    it('uses default timeout when not specified', async () => {
+      vi.mocked(generateObject).mockResolvedValue(
+        createMockResult(
+          { summary: 'test', items: [] },
+          { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
+        )
+      );
+
+      await generateStructured({
+        schema: testSchema,
+        prompt: 'Test prompt',
+      });
+
+      // Should have called generateObject with abortSignal (default timeout)
+      expect(generateObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          abortSignal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    it('clears timeout on successful completion', async () => {
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      vi.mocked(generateObject).mockResolvedValue(
+        createMockResult(
+          { summary: 'test', items: [] },
+          { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
+        )
+      );
+
+      await generateStructured({
+        schema: testSchema,
+        prompt: 'Test prompt',
+        timeoutMs: 5000,
+      });
+
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
+    });
+
+    it('clears timeout on error', async () => {
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      vi.mocked(generateObject).mockRejectedValue(new Error('Test error'));
+
+      await generateStructured({
+        schema: testSchema,
+        prompt: 'Test prompt',
+        timeoutMs: 5000,
+      });
+
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
     });
   });
 

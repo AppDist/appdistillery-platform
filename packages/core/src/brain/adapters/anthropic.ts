@@ -21,6 +21,7 @@ import {
 const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929' // Latest Claude 4.5 Sonnet
 const DEFAULT_MAX_TOKENS = 4000
 const DEFAULT_TEMPERATURE = 0.7
+const DEFAULT_TIMEOUT_MS = 60000 // 60 seconds
 
 /**
  * Options for generateStructured function
@@ -32,6 +33,7 @@ export interface GenerateOptions<T extends z.ZodType> {
   model?: string
   maxOutputTokens?: number
   temperature?: number
+  timeoutMs?: number
 }
 
 // Re-export GenerateResult for external use
@@ -104,6 +106,7 @@ export async function generateStructured<T extends z.ZodType>(
     model = DEFAULT_MODEL,
     maxOutputTokens = DEFAULT_MAX_TOKENS,
     temperature = DEFAULT_TEMPERATURE,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
   } = options
 
   // Initialize Anthropic client (singleton)
@@ -124,23 +127,41 @@ export async function generateStructured<T extends z.ZodType>(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Type assertion needed for v5 overload resolution
-      const result = await generateObject({
-        model: anthropic(model),
-        schema,
-        prompt,
-        system,
-        maxOutputTokens,
-        temperature,
-      } as any)
+      // Wrap AI call with timeout using AbortController
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-      // Extract usage information using shared utility
-      const usage = extractUsage(result.usage)
+      try {
+        // Type assertion needed for v5 overload resolution
+        const result = await generateObject({
+          model: anthropic(model),
+          schema,
+          prompt,
+          system,
+          maxOutputTokens,
+          temperature,
+          abortSignal: controller.signal,
+        } as any)
 
-      return {
-        success: true,
-        object: result.object,
-        usage,
+        clearTimeout(timeoutId)
+
+        // Extract usage information using shared utility
+        const usage = extractUsage(result.usage)
+
+        return {
+          success: true,
+          object: result.object,
+          usage,
+        }
+      } catch (error) {
+        clearTimeout(timeoutId)
+
+        // Check if this was a timeout abort
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('Request timed out')
+        }
+
+        throw error
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error')

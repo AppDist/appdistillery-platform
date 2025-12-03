@@ -46,6 +46,16 @@ export {
   type PromptValidationResult,
 } from './prompt-sanitizer';
 
+// Rate limiting
+export {
+  checkRateLimit,
+  clearRateLimit,
+  clearAllRateLimits,
+  getRateLimitStatus,
+  type RateLimitConfig,
+  type RateLimitResult,
+} from './rate-limiter';
+
 // Re-export adapters for direct use (advanced cases only)
 export {
   generateStructured,
