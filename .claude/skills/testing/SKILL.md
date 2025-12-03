@@ -463,6 +463,58 @@ beforeEach(() => {
 });
 ```
 
+## CI-Runnable Requirements
+
+**All tests must pass with `pnpm test` (no environment variables required).**
+
+### Test Categories
+
+| Category | Marker | CI Behavior |
+|----------|--------|-------------|
+| Unit | (default) | Always runs |
+| Integration | `@integration` | Skips if no Supabase |
+
+### Unit Tests (Must Run in CI)
+
+```typescript
+// ✅ GOOD: Mocks external dependencies
+vi.mock('@appdistillery/core/auth/supabase-server', () => ({
+  createServerSupabaseClient: vi.fn(() => mockSupabase),
+}));
+
+test('creates lead with org_id', async () => {
+  // Uses mock, runs in CI without Supabase
+});
+```
+
+### Integration Tests (Mark Clearly)
+
+```typescript
+// ✅ GOOD: Clear skip condition and marker
+const skipIfNoSupabase = !process.env.SUPABASE_SECRET_KEY;
+
+// @integration - requires local Supabase
+describe.skipIf(skipIfNoSupabase)('RLS Integration', () => {
+  // These tests need real database
+});
+```
+
+### Test Size Limits
+
+| Ratio | Status |
+|-------|--------|
+| 1:1 test:code | Ideal |
+| 2:1 test:code | Maximum |
+| > 2:1 | Tests are too verbose - simplify |
+
+### Mock Strategy
+
+| Always Mock | Never Mock | Conditional |
+|-------------|------------|-------------|
+| AI providers | Pure functions | Supabase |
+| External APIs | Zod schemas | Auth context |
+| File system | Local utilities | - |
+
 ## Coverage Goals
 
 | Category | Target | Notes |

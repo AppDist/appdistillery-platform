@@ -36,6 +36,9 @@ Code quality guidelines for maintaining consistency, type safety, and best pract
 | Import across modules | Use Core services or events |
 | Query without org_id | Always filter by `org_id` for tenant isolation |
 | Check module access manually | Use `isModuleEnabled()` from `@appdistillery/core/modules` |
+| Create utility without consumer | Integrate in same task, verify with grep |
+| Create 300+ line files | Split into focused modules |
+| Create example files | Use JSDoc `@example` in source |
 
 ## Core Principles
 
@@ -342,6 +345,7 @@ For detailed patterns, see:
 
 When working with code quality, also consult:
 
+- **simplicity** - Size limits, integration requirements, anti-patterns
 - **project-context** - Architecture decisions, dependencies, environment variables
 - **testing** - Test patterns, coverage requirements, TDD workflows
 - **documentation** - ADRs for architecture decisions, API documentation
