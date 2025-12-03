@@ -8,11 +8,11 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Completed | 10 |
-| Phase 1 | Backlog | 7 |
+| Phase 1 | Completed | 15 |
+| Phase 1 | Backlog | 25 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
-| **Total** | | **31** |
+| **Total** | | **54** |
 
 ---
 
@@ -63,16 +63,6 @@
 - **Household** - Shared family/friends group, shared usage pool
 - **Organization** - Business with org numbers, shared usage pool
 
-### Module Registry
-
-| ID | Title | Priority | Complexity |
-|----|-------|----------|------------|
-| [TASK-1-06](backlog/TASK-1-06-module-registry-helpers.md) | Module registry helpers | P2-Medium | 2 |
-
-### Usage Ledger
-
-All usage ledger tasks completed in Phase 1.
-
 ### Brain (AI Router)
 
 #### Completed
@@ -81,28 +71,89 @@ All usage ledger tasks completed in Phase 1.
 |----|-------|------------|
 | [TASK-1-10](completed/TASK-1-10-anthropic-adapter.md) | Anthropic adapter | 3 |
 | [TASK-1-10a](completed/TASK-1-10a-openai-adapter.md) | OpenAI adapter | 2 |
-
-#### Backlog
-
-| ID | Title | Priority | Complexity |
-|----|-------|----------|------------|
-| [TASK-1-10b](backlog/TASK-1-10b-google-adapter.md) | Google Gemini adapter | P1-High | 2 |
-| [TASK-1-11](backlog/TASK-1-11-brain-handle-service.md) | brainHandle() service | P1-High | 3 |
-| [TASK-1-12](backlog/TASK-1-12-brain-service-tests.md) | Brain service tests | P1-High | 2 |
+| [TASK-1-10b](completed/TASK-1-10b-google-adapter.md) | Google Gemini adapter | 2 |
+| [TASK-1-11](completed/TASK-1-11-brain-handle-service.md) | brainHandle() service | 3 |
+| [TASK-1-12](completed/TASK-1-12-brain-service-tests.md) | Brain service tests | 2 |
 
 ### Dashboard & Verification
 
-| ID | Title | Priority | Complexity |
-|----|-------|----------|------------|
-| [TASK-1-13](backlog/TASK-1-13-usage-dashboard.md) | Usage dashboard component | P2-Medium | 2 |
-| [TASK-1-14](backlog/TASK-1-14-rls-isolation-test.md) | RLS isolation test | P1-High | 3 |
-| [TASK-1-15](backlog/TASK-1-15-core-integration-test.md) | Core kernel integration test | P1-High | 3 |
+#### Completed
 
-**Exit Criteria:**
+| ID | Title | Complexity |
+|----|-------|------------|
+| [TASK-1-13](completed/TASK-1-13-usage-dashboard.md) | Usage dashboard component | 2 |
+| [TASK-1-14](completed/TASK-1-14-rls-isolation-test.md) | RLS isolation test | 3 |
+| [TASK-1-15](completed/TASK-1-15-core-integration-test.md) | Core kernel integration test | 3 |
+
+### Phase 0/1 Review Fixes
+
+> 25 improvement tasks from comprehensive review - targeting 100/100 all areas
+
+#### Fix Phase 1: Security & RLS (5 tasks)
+
+| ID | Title | Priority | Complexity | Agent |
+|----|-------|----------|------------|-------|
+| [TASK-1-16](backlog/TASK-1-16-fix-rls-tenant-modules.md) | Fix RLS recursion in tenant_modules | P0-Critical | 2 | database-architect |
+| [TASK-1-17](backlog/TASK-1-17-fix-rls-usage-events.md) | Fix RLS recursion in usage_events | P0-Critical | 2 | database-architect |
+| [TASK-1-18](backlog/TASK-1-18-add-security-headers.md) | Add security headers | P0-Critical | 1 | appdistillery-developer |
+| [TASK-1-19](backlog/TASK-1-19-fix-ai-package-vulnerability.md) | Fix ai package vulnerability | P1-High | 1 | appdistillery-developer |
+| [TASK-1-20](backlog/TASK-1-20-add-tenant-members-updated-at.md) | Add updated_at to tenant_members | P3-Low | 1 | database-architect |
+
+#### Fix Phase 2: Performance & Architecture (5 tasks)
+
+| ID | Title | Priority | Complexity | Agent |
+|----|-------|----------|------------|-------|
+| [TASK-1-21](backlog/TASK-1-21-server-side-aggregation.md) | Server-side aggregation for getUsageSummary | P0-Critical | 4 | appdistillery-developer |
+| [TASK-1-22](backlog/TASK-1-22-fix-redundant-getuser-calls.md) | Fix redundant getUser() calls | P1-High | 2 | appdistillery-developer |
+| [TASK-1-23](backlog/TASK-1-23-singleton-record-usage-client.md) | Singleton pattern for recordUsage | P2-Medium | 1 | appdistillery-developer |
+| [TASK-1-24](backlog/TASK-1-24-fix-supabase-ssr-mismatch.md) | Fix @supabase/ssr version mismatch | P1-High | 1 | appdistillery-developer |
+| [TASK-1-25](backlog/TASK-1-25-fix-turbo-pipeline-deps.md) | Fix Turbo pipeline dependencies | P3-Low | 1 | appdistillery-developer |
+
+#### Fix Phase 3: Testing Coverage (3 tasks)
+
+| ID | Title | Priority | Complexity | Agent |
+|----|-------|----------|------------|-------|
+| [TASK-1-26](backlog/TASK-1-26-google-adapter-tests.md) | Create Google adapter tests | P1-High | 3 | test-engineer |
+| [TASK-1-27](backlog/TASK-1-27-module-registry-tests.md) | Create module registry tests | P1-High | 3 | test-engineer |
+| [TASK-1-28](backlog/TASK-1-28-session-context-tests.md) | Create getSessionContext tests | P2-Medium | 2 | test-engineer |
+
+#### Fix Phase 4: Code Quality & DRY (5 tasks)
+
+| ID | Title | Priority | Complexity | Agent |
+|----|-------|----------|------------|-------|
+| [TASK-1-29](backlog/TASK-1-29-extract-adapter-utilities.md) | Extract shared adapter utilities | P1-High | 3 | appdistillery-developer |
+| [TASK-1-30](backlog/TASK-1-30-standardize-form-patterns.md) | Standardize form patterns | P2-Medium | 2 | ux-ui |
+| [TASK-1-31](backlog/TASK-1-31-remove-type-assertions.md) | Remove type assertions (as any) | P2-Medium | 2 | appdistillery-developer |
+| [TASK-1-32](backlog/TASK-1-32-consolidate-cn-utility.md) | Consolidate cn() utility | P2-Medium | 1 | appdistillery-developer |
+| [TASK-1-33](backlog/TASK-1-33-fix-tenant-switcher-links.md) | Fix tenant switcher links | P2-Medium | 1 | ux-ui |
+
+#### Fix Phase 5: UX & Documentation (7 tasks)
+
+| ID | Title | Priority | Complexity | Agent |
+|----|-------|----------|------------|-------|
+| [TASK-1-34](backlog/TASK-1-34-password-reset-flow.md) | Implement password reset flow | P1-High | 3 | ux-ui |
+| [TASK-1-35](backlog/TASK-1-35-theme-provider-dark-mode.md) | Add theme provider (dark mode) | P1-High | 2 | ux-ui |
+| [TASK-1-36](backlog/TASK-1-36-aria-live-error-messages.md) | Add aria-live to error messages | P3-Low | 1 | ux-ui |
+| [TASK-1-37](backlog/TASK-1-37-skip-to-content-link.md) | Add skip-to-content link | P3-Low | 1 | ux-ui |
+| [TASK-1-38](backlog/TASK-1-38-chart-accessibility.md) | Improve chart accessibility | P3-Low | 2 | ux-ui |
+| [TASK-1-39](backlog/TASK-1-39-eslint-flat-config.md) | Add ESLint flat config | P2-Medium | 1 | appdistillery-developer |
+| [TASK-1-40](backlog/TASK-1-40-create-missing-adrs.md) | Create missing ADRs | P2-Medium | 3 | documentation-writer |
+
+**Phase 1 Exit Criteria:**
 - User signup → create tenant → see dashboard
 - brainHandle() call → usage_event recorded
 - RLS tenant isolation verified
 - Personal/Household/Organization accounts all work
+
+**Review Fix Exit Criteria (100/100 all areas):**
+- All Critical/High issues resolved
+- Security score: 100/100
+- Architecture score: 100/100
+- Code Quality score: 100/100
+- Testing score: 100/100
+- Performance score: 100/100
+- Documentation score: 100/100
+- UX/UI score: 100/100
 
 ---
 

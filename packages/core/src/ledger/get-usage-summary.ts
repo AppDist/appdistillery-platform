@@ -108,24 +108,16 @@ export async function getUsageSummary(
     // 3. Create authenticated client (respects RLS)
     const supabase = createAuthClient()
 
-    // 4. Build query with date filter
-    let query = supabase
-      .from('usage_events')
-      .select('action, tokens_total, units')
-      .gte('created_at', startDate)
-
-    // Apply tenant filter (REQUIRED - null for Personal mode)
-    if (validated.tenantId === null) {
-      query = query.is('tenant_id', null)
-    } else {
-      query = query.eq('tenant_id', validated.tenantId)
-    }
-
-    // 5. Execute query
-    const { data, error } = await query
+    // 4. Call server-side aggregation RPC function
+    // This replaces O(n) row transfer + JavaScript aggregation
+    // with O(1) aggregated result from PostgreSQL
+    const { data, error } = await supabase.rpc('get_usage_summary', {
+      p_tenant_id: validated.tenantId,
+      p_start_date: startDate,
+    })
 
     if (error) {
-      console.error('[getUsageSummary] Database error:', error)
+      console.error('[getUsageSummary] RPC error:', error)
       return {
         success: false,
         error: 'Failed to retrieve usage summary',
@@ -139,57 +131,28 @@ export async function getUsageSummary(
       }
     }
 
-    // 6. Aggregate results
-    let totalTokens = 0
-    let totalUnits = 0
-    const eventCount = data.length
-    const actionMap = new Map<
-      string,
-      { tokensTotal: number; units: number; count: number }
-    >()
-
-    for (const row of data) {
-      // Aggregate totals
-      totalTokens += row.tokens_total ?? 0
-      totalUnits += row.units
-
-      // Aggregate by action
-      const action = row.action
-      const existing = actionMap.get(action) ?? {
-        tokensTotal: 0,
-        units: 0,
-        count: 0,
-      }
-
-      actionMap.set(action, {
-        tokensTotal: existing.tokensTotal + (row.tokens_total ?? 0),
-        units: existing.units + row.units,
-        count: existing.count + 1,
-      })
+    // 5. Parse RPC result (already aggregated server-side)
+    // Note: Type assertion needed until db:generate runs after migration
+    const rpcResult = data as unknown as {
+      totalTokens: number
+      totalUnits: number
+      eventCount: number
+      byAction: Array<{
+        action: string
+        tokensTotal: number
+        units: number
+        count: number
+      }>
     }
 
-    // 7. Convert map to array
-    const byAction: UsageByAction[] = Array.from(actionMap.entries()).map(
-      ([action, stats]) => ({
-        action,
-        tokensTotal: stats.tokensTotal,
-        units: stats.units,
-        count: stats.count,
-      })
-    )
-
-    // Sort by token usage (descending)
-    byAction.sort((a, b) => b.tokensTotal - a.tokensTotal)
-
-    // 8. Build summary
     const summary: UsageSummary = {
-      totalTokens,
-      totalUnits,
-      eventCount,
-      byAction,
+      totalTokens: rpcResult.totalTokens,
+      totalUnits: rpcResult.totalUnits,
+      eventCount: rpcResult.eventCount,
+      byAction: rpcResult.byAction,
     }
 
-    // 9. Validate with Zod
+    // 6. Validate with Zod
     const validatedSummary = UsageSummarySchema.parse(summary)
 
     return { success: true, data: validatedSummary }

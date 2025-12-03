@@ -2,21 +2,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getUsageSummary } from './get-usage-summary'
 
-// Mock Supabase client - need to properly chain the methods
-const createMockQuery = () => {
-  const mockQuery: any = {
-    from: vi.fn(() => mockQuery),
-    select: vi.fn(() => mockQuery),
-    eq: vi.fn(() => mockQuery),
-    is: vi.fn(() => mockQuery),
-    gte: vi.fn(() => mockQuery),
-    // Add data/error that gets resolved by await
-    then: vi.fn(),
-  }
-  return mockQuery
+// Mock Supabase client with RPC support
+const mockSupabase: any = {
+  rpc: vi.fn(),
 }
-
-const mockSupabase = createMockQuery()
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => mockSupabase),
@@ -32,10 +21,15 @@ const TENANT_ID = 'a0f86e3d-9c4b-4e5a-8b7f-1234567890ab'
 describe('getUsageSummary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Setup default mock resolution
-    mockSupabase.then.mockImplementation((resolve: any) => {
-      resolve({ data: [], error: null })
-      return Promise.resolve({ data: [], error: null })
+    // Setup default mock RPC response (empty result)
+    mockSupabase.rpc.mockResolvedValue({
+      data: {
+        totalTokens: 0,
+        totalUnits: 0,
+        eventCount: 0,
+        byAction: [],
+      },
+      error: null,
     })
   })
 
@@ -70,7 +64,10 @@ describe('getUsageSummary', () => {
       const result = await getUsageSummary(null, 'day')
 
       expect(result.success).toBe(true)
-      expect(mockSupabase.is).toHaveBeenCalledWith('tenant_id', null)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_tenant_id: null })
+      )
     })
 
     it('validates period is one of day/week/month', async () => {
@@ -103,7 +100,10 @@ describe('getUsageSummary', () => {
 
       await getUsageSummary(TENANT_ID, 'day')
 
-      expect(mockSupabase.gte).toHaveBeenCalledWith('created_at', expectedStart)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_start_date: expectedStart })
+      )
     })
 
     it('calculates start of this week for week period', async () => {
@@ -122,7 +122,10 @@ describe('getUsageSummary', () => {
 
       await getUsageSummary(TENANT_ID, 'week')
 
-      expect(mockSupabase.gte).toHaveBeenCalledWith('created_at', expectedStart)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_start_date: expectedStart })
+      )
     })
 
     it('calculates start of this month for month period', async () => {
@@ -139,91 +142,104 @@ describe('getUsageSummary', () => {
 
       await getUsageSummary(TENANT_ID, 'month')
 
-      expect(mockSupabase.gte).toHaveBeenCalledWith('created_at', expectedStart)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_start_date: expectedStart })
+      )
     })
   })
 
-  describe('query building', () => {
+  describe('RPC function calls', () => {
 
-    it('selects only required fields', async () => {
+    it('calls get_usage_summary RPC with correct parameters', async () => {
       await getUsageSummary(TENANT_ID, 'day')
 
-      expect(mockSupabase.select).toHaveBeenCalledWith(
-        'action, tokens_total, units'
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({
+          p_tenant_id: TENANT_ID,
+          p_start_date: expect.any(String),
+        })
       )
     })
 
-    it('filters by tenantId', async () => {
+    it('calls RPC with tenant_id for tenant mode', async () => {
       await getUsageSummary(TENANT_ID, 'day')
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('usage_events')
-      expect(mockSupabase.eq).toHaveBeenCalledWith('tenant_id', TENANT_ID)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_tenant_id: TENANT_ID })
+      )
     })
 
-    it('filters by null tenantId for Personal mode', async () => {
+    it('calls RPC with null tenant_id for Personal mode', async () => {
       await getUsageSummary(null, 'day')
 
-      expect(mockSupabase.is).toHaveBeenCalledWith('tenant_id', null)
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'get_usage_summary',
+        expect.objectContaining({ p_tenant_id: null })
+      )
     })
   })
 
   describe('aggregation', () => {
-    it('aggregates total tokens and units', async () => {
-      const mockData = [
-        {
-          action: 'agency:scope:generate',
-          tokens_total: 1000,
-          units: 50,
+    it('returns aggregated totals from RPC', async () => {
+      // RPC returns already-aggregated data from PostgreSQL
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          totalTokens: 4500,
+          totalUnits: 225,
+          eventCount: 3,
+          byAction: [
+            {
+              action: 'agency:scope:generate',
+              tokensTotal: 2500,
+              units: 125,
+              count: 2,
+            },
+            {
+              action: 'agency:proposal:draft',
+              tokensTotal: 2000,
+              units: 100,
+              count: 1,
+            },
+          ],
         },
-        {
-          action: 'agency:proposal:draft',
-          tokens_total: 2000,
-          units: 100,
-        },
-        {
-          action: 'agency:scope:generate',
-          tokens_total: 1500,
-          units: 75,
-        },
-      ]
-
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: mockData, error: null })
-        return Promise.resolve({ data: mockData, error: null })
+        error: null,
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
 
       expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.data.totalTokens).toBe(4500) // 1000 + 2000 + 1500
-        expect(result.data.totalUnits).toBe(225) // 50 + 100 + 75
+        expect(result.data.totalTokens).toBe(4500)
+        expect(result.data.totalUnits).toBe(225)
         expect(result.data.eventCount).toBe(3)
       }
     })
 
-    it('aggregates usage by action', async () => {
-      const mockData = [
-        {
-          action: 'agency:scope:generate',
-          tokens_total: 1000,
-          units: 50,
+    it('returns usage breakdown by action from RPC', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          totalTokens: 4500,
+          totalUnits: 225,
+          eventCount: 3,
+          byAction: [
+            {
+              action: 'agency:scope:generate',
+              tokensTotal: 2500,
+              units: 125,
+              count: 2,
+            },
+            {
+              action: 'agency:proposal:draft',
+              tokensTotal: 2000,
+              units: 100,
+              count: 1,
+            },
+          ],
         },
-        {
-          action: 'agency:proposal:draft',
-          tokens_total: 2000,
-          units: 100,
-        },
-        {
-          action: 'agency:scope:generate',
-          tokens_total: 1500,
-          units: 75,
-        },
-      ]
-
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: mockData, error: null })
-        return Promise.resolve({ data: mockData, error: null })
+        error: null,
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
@@ -232,11 +248,11 @@ describe('getUsageSummary', () => {
       if (result.success) {
         expect(result.data.byAction).toHaveLength(2)
 
-        // Should be sorted by tokens descending
+        // RPC returns data already sorted by tokens descending
         expect(result.data.byAction[0]).toEqual({
           action: 'agency:scope:generate',
-          tokensTotal: 2500, // 1000 + 1500
-          units: 125, // 50 + 75
+          tokensTotal: 2500,
+          units: 125,
           count: 2,
         })
 
@@ -249,28 +265,34 @@ describe('getUsageSummary', () => {
       }
     })
 
-    it('sorts by action tokens descending', async () => {
-      const mockData = [
-        {
-          action: 'agency:scope:generate',
-          tokens_total: 1000,
-          units: 50,
+    it('returns data sorted by tokens descending from RPC', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          totalTokens: 9000,
+          totalUnits: 450,
+          eventCount: 3,
+          byAction: [
+            {
+              action: 'agency:proposal:draft',
+              tokensTotal: 5000,
+              units: 250,
+              count: 1,
+            },
+            {
+              action: 'agency:brief:analyze',
+              tokensTotal: 3000,
+              units: 150,
+              count: 1,
+            },
+            {
+              action: 'agency:scope:generate',
+              tokensTotal: 1000,
+              units: 50,
+              count: 1,
+            },
+          ],
         },
-        {
-          action: 'agency:proposal:draft',
-          tokens_total: 5000,
-          units: 250,
-        },
-        {
-          action: 'agency:brief:analyze',
-          tokens_total: 3000,
-          units: 150,
-        },
-      ]
-
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: mockData, error: null })
-        return Promise.resolve({ data: mockData, error: null })
+        error: null,
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
@@ -283,40 +305,16 @@ describe('getUsageSummary', () => {
       }
     })
 
-    it('handles null tokens_total gracefully', async () => {
-      const mockData = [
-        {
-          action: 'agency:scope:generate',
-          tokens_total: null,
-          units: 50,
-        },
-        {
-          action: 'agency:proposal:draft',
-          tokens_total: 2000,
-          units: 100,
-        },
-      ]
-
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: mockData, error: null })
-        return Promise.resolve({ data: mockData, error: null })
-      })
-
-      const result = await getUsageSummary(TENANT_ID, 'day')
-
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.totalTokens).toBe(2000)
-        expect(result.data.totalUnits).toBe(150)
-        expect(result.data.byAction[0].tokensTotal).toBe(2000)
-        expect(result.data.byAction[1].tokensTotal).toBe(0)
-      }
-    })
-
     it('returns zero totals when no data', async () => {
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: [], error: null })
-        return Promise.resolve({ data: [], error: null })
+      // RPC returns zero totals when no events match
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          totalTokens: 0,
+          totalUnits: 0,
+          eventCount: 0,
+          byAction: [],
+        },
+        error: null,
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
@@ -332,10 +330,10 @@ describe('getUsageSummary', () => {
   })
 
   describe('error handling', () => {
-    it('returns error when database query fails', async () => {
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: null, error: { message: 'Connection error', code: 'PGRST000' } })
-        return Promise.resolve({ data: null, error: { message: 'Connection error', code: 'PGRST000' } })
+    it('returns error when RPC fails', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: null,
+        error: { message: 'Connection error', code: 'PGRST000' },
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
@@ -365,10 +363,10 @@ describe('getUsageSummary', () => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey
     })
 
-    it('handles null data response', async () => {
-      mockSupabase.then.mockImplementation((resolve: any) => {
-        resolve({ data: null, error: null })
-        return Promise.resolve({ data: null, error: null })
+    it('handles null data response from RPC', async () => {
+      mockSupabase.rpc.mockResolvedValue({
+        data: null,
+        error: null,
       })
 
       const result = await getUsageSummary(TENANT_ID, 'day')
