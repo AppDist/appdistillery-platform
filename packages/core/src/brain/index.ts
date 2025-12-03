@@ -36,6 +36,16 @@ export { brainHandle } from './brain-handle';
 // Types
 export type { BrainTask, BrainResult } from './types';
 
+// Prompt sanitization
+export {
+  validatePrompt,
+  validatePromptLength,
+  detectInjectionPatterns,
+  sanitizePrompt,
+  type PromptValidationOptions,
+  type PromptValidationResult,
+} from './prompt-sanitizer';
+
 // Re-export adapters for direct use (advanced cases only)
 export {
   generateStructured,
