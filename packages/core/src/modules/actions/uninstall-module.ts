@@ -3,23 +3,13 @@
 import { z } from 'zod'
 import { createServerSupabaseClient } from '../../auth/supabase-server'
 import { getSessionContext } from '../../auth'
+import { UninstallModuleSchema } from '../schemas'
 import type { Database } from '@appdistillery/database'
 
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
 
-/**
- * Input schema for uninstalling a module
- */
-export const UninstallModuleSchema = z.object({
-  moduleId: z.string().min(1, 'Module ID is required'),
-  /**
-   * Soft delete: disable module but keep data
-   * Hard delete: remove tenant_modules record (may cascade delete module data)
-   */
-  hardDelete: z.boolean().optional().default(false),
-})
-
-export type UninstallModuleInput = z.infer<typeof UninstallModuleSchema>
+// Re-export types for convenience (types are safe in 'use server' files)
+export type { UninstallModuleInput } from '../schemas'
 
 /**
  * Result type for uninstall module operation

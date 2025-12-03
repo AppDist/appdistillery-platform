@@ -4,10 +4,11 @@ import { z } from 'zod'
 import {
   type GenerateResult,
   extractUsage,
+  createClientCache,
+  DEFAULT_RETRY_CONFIG,
   sleep,
   isRetryableError,
   sanitizeErrorMessage,
-  DEFAULT_RETRY_CONFIG,
 } from './shared'
 
 /**
@@ -38,33 +39,17 @@ export interface GenerateOptionsWithOpenAI<T extends z.ZodType> {
 export type { GenerateResult }
 
 /**
- * Cached OpenAI client instance
- */
-let cachedClient: ReturnType<typeof createOpenAI> | null = null
-
-/**
  * Get or create OpenAI client with API key from environment
  *
  * Uses singleton pattern to avoid creating multiple clients.
  *
  * @throws {Error} If OPENAI_API_KEY is not set
  */
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY
-
-  if (!apiKey) {
-    throw new Error(
-      'OPENAI_API_KEY environment variable is required. ' +
-        'Add it to your .env.local file.'
-    )
-  }
-
-  if (!cachedClient) {
-    cachedClient = createOpenAI({ apiKey })
-  }
-
-  return cachedClient
-}
+const getOpenAIClient = createClientCache({
+  envVarName: 'OPENAI_API_KEY',
+  createClient: (apiKey) => createOpenAI({ apiKey }),
+  adapterName: 'openai',
+})
 
 /**
  * Generate structured output using OpenAI with Vercel AI SDK

@@ -4,10 +4,11 @@ import { z } from 'zod'
 import {
   type GenerateResult,
   extractUsage,
+  createClientCache,
+  DEFAULT_RETRY_CONFIG,
   sleep,
   isRetryableError,
   sanitizeErrorMessage,
-  DEFAULT_RETRY_CONFIG,
 } from './shared'
 
 /**
@@ -38,33 +39,17 @@ export interface GenerateOptionsWithGoogle<T extends z.ZodType> {
 export type { GenerateResult }
 
 /**
- * Cached Google Generative AI client instance
- */
-let cachedClient: ReturnType<typeof createGoogleGenerativeAI> | null = null
-
-/**
  * Get or create Google Generative AI client with API key from environment
  *
  * Uses singleton pattern to avoid creating multiple clients.
  *
  * @throws {Error} If GOOGLE_GENERATIVE_AI_API_KEY is not set
  */
-function getGoogleClient() {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-
-  if (!apiKey) {
-    throw new Error(
-      'GOOGLE_GENERATIVE_AI_API_KEY environment variable is required. ' +
-        'Add it to your .env.local file.'
-    )
-  }
-
-  if (!cachedClient) {
-    cachedClient = createGoogleGenerativeAI({ apiKey })
-  }
-
-  return cachedClient
-}
+const getGoogleClient = createClientCache({
+  envVarName: 'GOOGLE_GENERATIVE_AI_API_KEY',
+  createClient: (apiKey) => createGoogleGenerativeAI({ apiKey }),
+  adapterName: 'google',
+})
 
 /**
  * Generate structured output using Google Gemini with Vercel AI SDK

@@ -4,10 +4,12 @@ import { z } from 'zod'
 import {
   type GenerateResult,
   extractUsage,
+  withTimeout,
+  createClientCache,
+  DEFAULT_RETRY_CONFIG,
   sleep,
   isRetryableError,
   sanitizeErrorMessage,
-  DEFAULT_RETRY_CONFIG,
 } from './shared'
 
 /**
@@ -40,33 +42,17 @@ export interface GenerateOptions<T extends z.ZodType> {
 export type { GenerateResult }
 
 /**
- * Cached Anthropic client instance
- */
-let cachedClient: ReturnType<typeof createAnthropic> | null = null
-
-/**
  * Get or create Anthropic client with API key from environment
  *
  * Uses singleton pattern to avoid creating multiple clients.
  *
  * @throws {Error} If ANTHROPIC_API_KEY is not set
  */
-function getAnthropicClient() {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-
-  if (!apiKey) {
-    throw new Error(
-      'ANTHROPIC_API_KEY environment variable is required. ' +
-        'Add it to your .env.local file.'
-    )
-  }
-
-  if (!cachedClient) {
-    cachedClient = createAnthropic({ apiKey })
-  }
-
-  return cachedClient
-}
+const getAnthropicClient = createClientCache({
+  envVarName: 'ANTHROPIC_API_KEY',
+  createClient: (apiKey) => createAnthropic({ apiKey }),
+  adapterName: 'anthropic',
+})
 
 /**
  * Generate structured output using Anthropic Claude with Vercel AI SDK
@@ -127,41 +113,27 @@ export async function generateStructured<T extends z.ZodType>(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Wrap AI call with timeout using AbortController
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-      try {
+      // Wrap AI call with timeout using shared utility
+      const result = await withTimeout(async (signal) => {
         // Type assertion needed for v5 overload resolution
-        const result = await generateObject({
+        return await generateObject({
           model: anthropic(model),
           schema,
           prompt,
           system,
           maxOutputTokens,
           temperature,
-          abortSignal: controller.signal,
+          abortSignal: signal,
         } as any)
+      }, timeoutMs)
 
-        clearTimeout(timeoutId)
+      // Extract usage information using shared utility
+      const usage = extractUsage(result.usage)
 
-        // Extract usage information using shared utility
-        const usage = extractUsage(result.usage)
-
-        return {
-          success: true,
-          object: result.object,
-          usage,
-        }
-      } catch (error) {
-        clearTimeout(timeoutId)
-
-        // Check if this was a timeout abort
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error('Request timed out')
-        }
-
-        throw error
+      return {
+        success: true,
+        object: result.object,
+        usage,
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error')

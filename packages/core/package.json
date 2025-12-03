@@ -13,7 +13,8 @@
     "./auth/schemas": "./src/auth/schemas/tenant.ts",
     "./brain": "./src/brain/index.ts",
     "./ledger": "./src/ledger/index.ts",
-    "./modules": "./src/modules/index.ts"
+    "./modules": "./src/modules/index.ts",
+    "./modules/actions": "./src/modules/actions/index.ts"
   },
   "typesVersions": {
     "*": {
@@ -40,6 +41,9 @@
       ],
       "modules": [
         "./src/modules/index.ts"
+      ],
+      "modules/actions": [
+        "./src/modules/actions/index.ts"
       ]
     }
   },

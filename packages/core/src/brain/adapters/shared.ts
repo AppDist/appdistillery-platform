@@ -152,6 +152,77 @@ export async function withRetry<T>(
 }
 
 /**
+ * Execute an operation with a timeout using AbortController
+ *
+ * @param operation - Async function that accepts an AbortSignal
+ * @param timeoutMs - Timeout in milliseconds
+ * @returns Promise that rejects with 'Request timed out' on timeout
+ */
+export async function withTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number
+): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const result = await operation(controller.signal)
+    clearTimeout(timeoutId)
+    return result
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    // Convert abort error to timeout error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out')
+    }
+
+    throw error
+  }
+}
+
+/**
+ * Configuration for a singleton client cache
+ */
+export interface ClientCacheConfig<TClient> {
+  envVarName: string
+  createClient: (apiKey: string) => TClient
+  adapterName: string
+}
+
+/**
+ * Create a singleton client manager for an AI provider
+ *
+ * Returns getter function that creates client on first access and caches it.
+ *
+ * @param config - Client cache configuration
+ * @returns Getter function that returns cached client or creates new one
+ */
+export function createClientCache<TClient>(
+  config: ClientCacheConfig<TClient>
+): () => TClient {
+  const { envVarName, createClient, adapterName } = config
+  let cachedClient: TClient | null = null
+
+  return () => {
+    const apiKey = process.env[envVarName]
+
+    if (!apiKey) {
+      throw new Error(
+        `${envVarName} environment variable is required. ` +
+          `Add it to your .env.local file.`
+      )
+    }
+
+    if (!cachedClient) {
+      cachedClient = createClient(apiKey)
+    }
+
+    return cachedClient
+  }
+}
+
+/**
  * Default retry configuration
  */
 export const DEFAULT_RETRY_CONFIG = {

@@ -12,17 +12,14 @@ export type { ModuleManifest, InstalledModule } from './types'
 export { getInstalledModules } from './get-installed-modules'
 export { isModuleEnabled } from './is-module-enabled'
 
-// Export Server Actions
+// Export schemas (kept separate from 'use server' files)
 export {
-  installModule,
   InstallModuleSchema,
-  type InstallModuleInput,
-  type InstallModuleResult,
-} from './actions/install-module'
-
-export {
-  uninstallModule,
   UninstallModuleSchema,
+  type InstallModuleInput,
   type UninstallModuleInput,
-  type UninstallModuleResult,
-} from './actions/uninstall-module'
+} from './schemas'
+
+// Export Server Actions (async functions only)
+export { installModule, type InstallModuleResult } from './actions/install-module'
+export { uninstallModule, type UninstallModuleResult } from './actions/uninstall-module'

@@ -3,20 +3,14 @@
 import { z } from 'zod'
 import { createServerSupabaseClient } from '../../auth/supabase-server'
 import { getSessionContext } from '../../auth'
+import { InstallModuleSchema } from '../schemas'
 import type { Database, Json } from '@appdistillery/database'
 
 type ModuleRow = Database['public']['Tables']['modules']['Row']
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
 
-/**
- * Input schema for installing a module
- */
-export const InstallModuleSchema = z.object({
-  moduleId: z.string().min(1, 'Module ID is required'),
-  settings: z.record(z.unknown()).optional().default({}),
-})
-
-export type InstallModuleInput = z.infer<typeof InstallModuleSchema>
+// Re-export types for convenience (types are safe in 'use server' files)
+export type { InstallModuleInput } from '../schemas'
 
 /**
  * Result type for install module operation
