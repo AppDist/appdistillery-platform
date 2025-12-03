@@ -4,7 +4,8 @@ import type { SessionContext } from '../../auth'
 
 // Use vi.hoisted() for variables used in vi.mock() factory
 const mockGetSessionContext = vi.hoisted(() => vi.fn())
-const mockSupabase = vi.hoisted(() => ({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSupabase: Record<string, any> = vi.hoisted(() => ({
   from: vi.fn(() => mockSupabase),
   select: vi.fn(() => mockSupabase),
   update: vi.fn(() => mockSupabase),
@@ -34,7 +35,12 @@ const mockSession: SessionContext = {
     id: 'tenant-789',
     name: 'Test Tenant',
     type: 'organization',
+    slug: 'test-tenant',
+    orgNumber: null,
+    billingEmail: null,
+    settings: {},
     createdAt: new Date(),
+    updatedAt: new Date(),
   },
   membership: {
     id: 'membership-1',

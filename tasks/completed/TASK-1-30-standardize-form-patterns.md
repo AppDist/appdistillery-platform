@@ -4,7 +4,7 @@ title: Standardize form patterns
 priority: P2-Medium
 complexity: 2
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: M2
 fix-phase: 4

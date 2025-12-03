@@ -4,7 +4,7 @@ title: Add ESLint flat config
 priority: P2-Medium
 complexity: 1
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: M3
 fix-phase: 5

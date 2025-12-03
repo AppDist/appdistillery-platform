@@ -110,7 +110,7 @@ export function RecentActivity({ events, className }: RecentActivityProps) {
                 </TableHeader>
                 <TableBody>
                   {events.map((event) => {
-                    const module = getModuleFromAction(event.action)
+                    const moduleName = getModuleFromAction(event.action)
                     return (
                       <TableRow key={event.id}>
                         <TableCell className="font-medium whitespace-nowrap">
@@ -123,8 +123,8 @@ export function RecentActivity({ events, className }: RecentActivityProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Badge variant={getModuleBadgeVariant(module)}>
-                              {module}
+                            <Badge variant={getModuleBadgeVariant(moduleName)}>
+                              {moduleName}
                             </Badge>
                             <span className="text-sm text-muted-foreground font-mono">
                               {formatActionDisplay(event.action)}

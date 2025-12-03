@@ -11,8 +11,6 @@ import {
 import { CreateHouseholdForm } from '@/components/tenants/create-household-form'
 import { CreateOrganizationForm } from '@/components/tenants/create-organization-form'
 
-type TenantType = 'household' | 'organization'
-
 interface CreateTenantPageProps {
   searchParams: Promise<{ type?: string }>
 }

@@ -4,7 +4,7 @@ title: Add updated_at to tenant_members table
 priority: P3-Low
 complexity: 1
 module: database
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: L4
 fix-phase: 1

@@ -4,7 +4,7 @@ title: Fix tenant switcher navigation links
 priority: P2-Medium
 complexity: 1
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: M8
 fix-phase: 4

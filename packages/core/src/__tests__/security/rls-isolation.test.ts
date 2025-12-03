@@ -25,9 +25,9 @@ import {
 } from './rls-test-helpers'
 import { TEST_USERS, TEST_TENANTS, TEST_USAGE_EVENTS } from './fixtures'
 
-// Skip tests if Supabase is not configured (uses local default if not set)
-// Tests will fail naturally if Supabase is not running
-const skipIfNoSupabase = false // Always attempt to run with local Supabase
+// Skip tests if Supabase is not configured
+const skipIfNoSupabase =
+  !process.env.SUPABASE_SECRET_KEY && !process.env.NEXT_PUBLIC_SUPABASE_URL
 
 describe.skipIf(skipIfNoSupabase)('RLS Tenant Isolation', () => {
   let context: TestContext

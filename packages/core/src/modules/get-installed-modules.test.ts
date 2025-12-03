@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getInstalledModules } from './get-installed-modules'
 
 // Mock Supabase server client
-const mockSupabase = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockSupabase: Record<string, any> = {
   from: vi.fn(() => mockSupabase),
   select: vi.fn(() => mockSupabase),
   eq: vi.fn(() => mockSupabase),
@@ -151,8 +152,8 @@ describe('getInstalledModules', () => {
     })
 
     expect(result).toHaveLength(2)
-    expect(result[0].enabled).toBe(true)
-    expect(result[1].enabled).toBe(false)
+    expect(result[0]!.enabled).toBe(true)
+    expect(result[1]!.enabled).toBe(false)
 
     // Should NOT filter by enabled status when includeDisabled is true
     expect(mockSupabase.eq).toHaveBeenCalledWith('tenant_id', 'tenant-123')
@@ -210,8 +211,8 @@ describe('getInstalledModules', () => {
     expect(result[0]).toHaveProperty('moduleId')
     expect(result[0]).toHaveProperty('installedAt')
     expect(result[0]).toHaveProperty('updatedAt')
-    expect(result[0].module).toHaveProperty('isActive')
-    expect(result[0].module).toHaveProperty('createdAt')
+    expect(result[0]!.module).toHaveProperty('isActive')
+    expect(result[0]!.module).toHaveProperty('createdAt')
   })
 
   it('handles null settings gracefully', async () => {
@@ -245,7 +246,7 @@ describe('getInstalledModules', () => {
 
     const result = await getInstalledModules('tenant-123')
 
-    expect(result[0].settings).toEqual({})
+    expect(result[0]!.settings).toEqual({})
   })
 
   it('throws error on database error', async () => {

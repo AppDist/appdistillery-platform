@@ -4,7 +4,7 @@ title: Implement password reset flow
 priority: P1-High
 complexity: 3
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: H6
 fix-phase: 5

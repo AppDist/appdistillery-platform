@@ -4,7 +4,7 @@ title: Add aria-live to error messages
 priority: P3-Low
 complexity: 1
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: L1
 fix-phase: 5

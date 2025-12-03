@@ -8,11 +8,11 @@
 |-------|--------|-------|
 | Phase 0 | Completed | 9 |
 | Phase 0 | Backlog | 0 |
-| Phase 1 | Completed | 15 |
-| Phase 1 | Backlog | 25 |
+| Phase 1 | Completed | 40 |
+| Phase 1 | Backlog | 1 |
 | Phase 2 | Backlog | 4 |
 | Phase 3 | Backlog | 1 |
-| **Total** | | **54** |
+| **Total** | | **55** |
 
 ---
 
@@ -137,7 +137,7 @@
 | [TASK-1-37](backlog/TASK-1-37-skip-to-content-link.md) | Add skip-to-content link | P3-Low | 1 | ux-ui |
 | [TASK-1-38](backlog/TASK-1-38-chart-accessibility.md) | Improve chart accessibility | P3-Low | 2 | ux-ui |
 | [TASK-1-39](backlog/TASK-1-39-eslint-flat-config.md) | Add ESLint flat config | P2-Medium | 1 | appdistillery-developer |
-| [TASK-1-40](backlog/TASK-1-40-create-missing-adrs.md) | Create missing ADRs | P2-Medium | 3 | documentation-writer |
+| [TASK-1-40](completed/TASK-1-40-create-missing-adrs.md) | Create missing ADRs | 3 |
 
 **Phase 1 Exit Criteria:**
 - User signup → create tenant → see dashboard

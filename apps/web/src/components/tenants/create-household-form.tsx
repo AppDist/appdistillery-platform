@@ -2,8 +2,13 @@
 
 import { useState, useId, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { createHousehold } from '@/actions/tenant'
-import { CreateHouseholdSchema } from '@appdistillery/core/auth/schemas'
+import {
+  CreateHouseholdSchema,
+  type CreateHouseholdInput,
+} from '@appdistillery/core/auth/schemas'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,103 +38,57 @@ function slugify(text: string): string {
 
 export function CreateHouseholdForm() {
   const router = useRouter()
-  const nameInputId = useId()
-  const slugInputId = useId()
-
-  const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
-  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<{
-    name?: string
-    slug?: string
-  }>({})
+  const [serverError, setServerError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Auto-generate slug from name unless user has manually edited it
+  // Generate unique IDs for accessibility
+  const formId = useId()
+  const errorId = `${formId}-error`
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateHouseholdInput>({
+    resolver: zodResolver(CreateHouseholdSchema),
+    defaultValues: {
+      name: '',
+      slug: '',
+    },
+  })
+
+  // Watch name field to auto-generate slug
+  const nameValue = watch('name')
+  const slugValue = watch('slug')
+
+  // Auto-generate slug from name when user hasn't manually edited the slug
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+
   useEffect(() => {
-    if (!isSlugManuallyEdited) {
-      setSlug(slugify(name))
+    if (!slugManuallyEdited && nameValue) {
+      const generatedSlug = slugify(nameValue)
+      setValue('slug', generatedSlug)
     }
-  }, [name, isSlugManuallyEdited])
+  }, [nameValue, slugManuallyEdited, setValue])
 
-  /**
-   * Validate a single field using the Zod schema
-   */
-  const validateField = (field: 'name' | 'slug', value: string): string | undefined => {
-    const fieldSchema = CreateHouseholdSchema.shape[field]
-    const result = fieldSchema.safeParse(value)
-    if (!result.success) {
-      return result.error.issues[0]?.message
-    }
-    return undefined
-  }
-
-  /**
-   * Handle name input change with validation
-   */
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setName(value)
-    setError(null)
-
-    // Validate on change
-    if (value.length > 0) {
-      const nameError = validateField('name', value)
-      setFieldErrors((prev) => ({ ...prev, name: nameError }))
-    } else {
-      setFieldErrors((prev) => ({ ...prev, name: undefined }))
-    }
-  }
-
-  /**
-   * Handle slug input change with validation
-   */
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase()
-    setSlug(value)
-    setIsSlugManuallyEdited(true)
-    setError(null)
-
-    // Validate on change
-    if (value.length > 0) {
-      const slugError = validateField('slug', value)
-      setFieldErrors((prev) => ({ ...prev, slug: slugError }))
-    } else {
-      setFieldErrors((prev) => ({ ...prev, slug: undefined }))
-    }
+    setSlugManuallyEdited(true)
+    // Apply slugify to manual input as well to enforce format
+    const value = slugify(e.target.value)
+    setValue('slug', value)
   }
 
-  /**
-   * Handle form submission
-   */
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    setFieldErrors({})
-
-    // Client-side validation using Zod schema
-    const validationResult = CreateHouseholdSchema.safeParse({ name, slug })
-
-    if (!validationResult.success) {
-      const errors: { name?: string; slug?: string } = {}
-      for (const issue of validationResult.error.issues) {
-        const field = issue.path[0] as 'name' | 'slug'
-        if (!errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setFieldErrors(errors)
-      return
-    }
-
+  const onSubmit = async (data: CreateHouseholdInput) => {
+    setServerError(null)
     setIsLoading(true)
 
     try {
-      const result = await createHousehold({ name, slug })
+      const result = await createHousehold(data)
 
       if (!result.success) {
-        setError(result.error)
+        setServerError(result.error)
         setIsLoading(false)
         return
       }
@@ -137,13 +96,12 @@ export function CreateHouseholdForm() {
       // Success - redirect to dashboard
       router.push('/dashboard')
     } catch {
-      setError('An unexpected error occurred. Please try again.')
+      setServerError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
   }
 
-  const hasNameError = !!fieldErrors.name
-  const hasSlugError = !!fieldErrors.slug
+  const hasAnyError = serverError || Object.keys(errors).length > 0
 
   return (
     <Card>
@@ -153,80 +111,88 @@ export function CreateHouseholdForm() {
           Set up your household for family members or roommates to share
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
-          {/* General error message */}
-          {error && (
+          {/* Server error message */}
+          {serverError && (
             <div
-              id="error-message"
+              id={errorId}
               role="alert"
               aria-live="polite"
               className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
             >
-              {error}
+              {serverError}
             </div>
           )}
 
           {/* Household Name Field */}
           <div className="space-y-2">
-            <Label htmlFor={nameInputId}>Household Name</Label>
+            <Label htmlFor={`${formId}-name`}>Household Name</Label>
             <Input
-              id={nameInputId}
+              id={`${formId}-name`}
               type="text"
               placeholder="e.g., Smith Family"
-              value={name}
-              onChange={handleNameChange}
+              {...register('name')}
               autoComplete="organization"
               disabled={isLoading}
-              aria-invalid={hasNameError}
-              aria-describedby={hasNameError ? `${nameInputId}-error` : undefined}
-              className={cn(hasNameError && 'border-destructive')}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? `${formId}-name-error` : undefined}
+              className={cn(errors.name && 'border-destructive')}
             />
-            {hasNameError && (
+            {errors.name && (
               <p
-                id={`${nameInputId}-error`}
+                id={`${formId}-name-error`}
                 className="text-sm text-destructive"
                 role="alert"
               >
-                {fieldErrors.name}
+                {errors.name.message}
               </p>
             )}
           </div>
 
           {/* URL Slug Field */}
           <div className="space-y-2">
-            <Label htmlFor={slugInputId}>URL Slug</Label>
+            <Label htmlFor={`${formId}-slug`}>URL Slug</Label>
             <Input
-              id={slugInputId}
+              id={`${formId}-slug`}
               type="text"
               placeholder="e.g., smith-family"
-              value={slug}
+              value={slugValue}
               onChange={handleSlugChange}
               autoComplete="off"
               disabled={isLoading}
-              aria-invalid={hasSlugError}
-              aria-describedby={`${slugInputId}-description${hasSlugError ? ` ${slugInputId}-error` : ''}`}
-              className={cn(hasSlugError && 'border-destructive')}
+              aria-invalid={!!errors.slug}
+              aria-describedby={
+                errors.slug
+                  ? `${formId}-slug-error ${formId}-slug-preview`
+                  : `${formId}-slug-preview`
+              }
+              className={cn(errors.slug && 'border-destructive')}
             />
             <p
-              id={`${slugInputId}-description`}
+              id={`${formId}-slug-preview`}
               className="text-sm text-muted-foreground"
             >
-              Your household URL: appdistillery.com/h/{slug || 'your-slug'}
+              Your household URL: appdistillery.com/h/{slugValue || 'your-slug'}
             </p>
-            {hasSlugError && (
+            {errors.slug && (
               <p
-                id={`${slugInputId}-error`}
+                id={`${formId}-slug-error`}
                 className="text-sm text-destructive"
                 role="alert"
               >
-                {fieldErrors.slug}
+                {errors.slug.message}
               </p>
             )}
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+            aria-describedby={hasAnyError ? errorId : undefined}
+          >
             {isLoading ? 'Creating household...' : 'Create Household'}
           </Button>
         </CardFooter>

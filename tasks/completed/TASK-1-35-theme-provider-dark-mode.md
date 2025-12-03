@@ -4,7 +4,7 @@ title: Add theme provider (dark mode)
 priority: P1-High
 complexity: 2
 module: web
-status: BACKLOG
+status: COMPLETED
 created: 2025-12-02
 review-id: H7
 fix-phase: 5
