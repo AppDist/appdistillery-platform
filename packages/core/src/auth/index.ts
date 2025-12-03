@@ -91,8 +91,9 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   }
 
   // Get active tenant from cookie (user's selected tenant)
+  // Pass user.id to avoid redundant getUser() call
   try {
-    const activeTenant = await getActiveTenant()
+    const activeTenant = await getActiveTenant(user.id)
 
     // If no active tenant, user is working in personal mode
     if (!activeTenant) {

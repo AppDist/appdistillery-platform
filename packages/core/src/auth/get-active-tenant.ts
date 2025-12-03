@@ -18,11 +18,18 @@ import { transformTenantRow } from './transforms'
  * - User is no longer a member of the tenant
  * - User is not authenticated
  *
+ * @param userId - Optional user ID to avoid redundant getUser() call.
+ *                 If not provided, will fetch user from auth.
  * @returns Tenant object if active tenant is set and valid, null otherwise
  *
  * @example
  * ```typescript
+ * // Without userId (will call getUser internally)
  * const activeTenant = await getActiveTenant()
+ *
+ * // With userId (avoids redundant getUser call)
+ * const { data: { user } } = await supabase.auth.getUser()
+ * const activeTenant = await getActiveTenant(user.id)
  *
  * if (activeTenant) {
  *   console.log(`Working in: ${activeTenant.name}`)
@@ -31,7 +38,7 @@ import { transformTenantRow } from './transforms'
  * }
  * ```
  */
-export async function getActiveTenant(): Promise<Tenant | null> {
+export async function getActiveTenant(userId?: string): Promise<Tenant | null> {
   try {
     // 1. Read cookie
     const cookieStore = await cookies()
@@ -42,23 +49,29 @@ export async function getActiveTenant(): Promise<Tenant | null> {
       return null
     }
 
-    // 3. Get authenticated user
+    // 3. Get authenticated user (if userId not provided)
     const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let authenticatedUserId = userId
 
-    if (authError || !user) {
-      console.warn('[getActiveTenant] User not authenticated')
-      return null
+    if (!authenticatedUserId) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        console.warn('[getActiveTenant] User not authenticated')
+        return null
+      }
+
+      authenticatedUserId = user.id
     }
 
     // 4. Validate user still has membership (defensive check)
     const { data: membership, error: membershipError } = await supabase
       .from('tenant_members')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', authenticatedUserId)
       .eq('tenant_id', tenantId)
       .single()
 

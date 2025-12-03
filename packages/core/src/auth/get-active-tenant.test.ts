@@ -349,6 +349,74 @@ describe('getActiveTenant', () => {
     })
   })
 
+  describe('userId parameter optimization', () => {
+    const tenantId = '123e4567-e89b-12d3-a456-426614174000'
+    const userId = 'user-456'
+
+    const mockTenantRow: TenantRow = {
+      id: tenantId,
+      type: 'organization',
+      name: 'AppDistillery',
+      slug: 'appdistillery',
+      org_number: '987654321',
+      billing_email: 'billing@appdistillery.com',
+      settings: { theme: 'dark' },
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-15T12:00:00Z',
+    }
+
+    beforeEach(async () => {
+      const { cookies } = await import('next/headers')
+      const mockCookieStore = {
+        get: vi.fn().mockReturnValue({ value: tenantId }),
+      }
+      vi.mocked(cookies).mockResolvedValue(mockCookieStore as any)
+
+      // Mock valid membership
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 'membership-1' },
+        error: null,
+      })
+
+      // Mock tenant found
+      mockSupabase.single.mockResolvedValueOnce({
+        data: mockTenantRow,
+        error: null,
+      })
+    })
+
+    it('skips getUser() call when userId is provided', async () => {
+      const result = await getActiveTenant(userId)
+
+      // Verify getUser was NOT called (optimization working)
+      expect(mockSupabase.auth.getUser).not.toHaveBeenCalled()
+
+      // Verify membership check used provided userId
+      expect(mockSupabase.from).toHaveBeenCalledWith('tenant_members')
+      expect(mockSupabase.eq).toHaveBeenCalledWith('user_id', userId)
+
+      // Verify tenant was fetched successfully
+      expect(result).not.toBeNull()
+      expect(result?.id).toBe(tenantId)
+    })
+
+    it('calls getUser() when userId is not provided', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: userId } },
+        error: null,
+      })
+
+      const result = await getActiveTenant()
+
+      // Verify getUser WAS called (backward compatibility)
+      expect(mockSupabase.auth.getUser).toHaveBeenCalled()
+
+      // Verify tenant was fetched successfully
+      expect(result).not.toBeNull()
+      expect(result?.id).toBe(tenantId)
+    })
+  })
+
   describe('console warnings', () => {
     const tenantId = '123e4567-e89b-12d3-a456-426614174000'
 
