@@ -8,6 +8,7 @@
  * - tenants table: users can only see their own tenants
  * - tenant_members table: users can only see their own memberships and tenant members
  * - usage_events table: users can only see tenant usage and personal usage
+ * - tenant_modules table: users can only see their tenant's installed modules
  *
  * @requires Local Supabase instance running (http://127.0.0.1:54321)
  * @skipIf SUPABASE_SECRET_KEY is not set (graceful skip)
@@ -20,10 +21,16 @@ import {
   createTestUser,
   createTestTenant,
   createTestUsageEvent,
+  createTestTenantModule,
   cleanupTestData,
   type TestContext,
 } from './rls-test-helpers'
-import { TEST_USERS, TEST_TENANTS, TEST_USAGE_EVENTS } from './fixtures'
+import {
+  TEST_USERS,
+  TEST_TENANTS,
+  TEST_USAGE_EVENTS,
+  TEST_TENANT_MODULES,
+} from './fixtures'
 
 // Skip tests if Supabase is not configured
 const skipIfNoSupabase =
@@ -98,6 +105,19 @@ describe.skipIf(skipIfNoSupabase)('RLS Tenant Isolation', () => {
       TEST_USAGE_EVENTS.personalEventUserB
     )
 
+    // Create tenant_modules
+    const tenantAModuleId = await createTestTenantModule(
+      serviceClient,
+      tenantA.id,
+      TEST_TENANT_MODULES.tenantAModule
+    )
+
+    const tenantBModuleId = await createTestTenantModule(
+      serviceClient,
+      tenantB.id,
+      TEST_TENANT_MODULES.tenantBModule
+    )
+
     context = {
       serviceClient,
       userA,
@@ -111,6 +131,10 @@ describe.skipIf(skipIfNoSupabase)('RLS Tenant Isolation', () => {
         tenantB: tenantBEventId,
         personalUserA: personalUserAEventId,
         personalUserB: personalUserBEventId,
+      },
+      tenantModuleIds: {
+        tenantA: tenantAModuleId,
+        tenantB: tenantBModuleId,
       },
     }
   }, 30000) // 30 second timeout for setup
@@ -427,6 +451,91 @@ describe.skipIf(skipIfNoSupabase)('RLS Tenant Isolation', () => {
       expect(
         data?.some((e) => e.id === context.usageEventIds.personalUserA)
       ).toBe(false)
+    })
+  })
+
+  describe('tenant_modules table RLS', () => {
+    it('User A can see Tenant A modules', async () => {
+      const { data, error } = await context.userAClient
+        .from('tenant_modules')
+        .select('*')
+        .eq('id', context.tenantModuleIds.tenantA)
+        .single()
+
+      expect(error).toBeNull()
+      expect(data).not.toBeNull()
+      expect(data?.id).toBe(context.tenantModuleIds.tenantA)
+      expect(data?.tenant_id).toBe(context.tenantA.id)
+      expect(data?.module_id).toBe(TEST_TENANT_MODULES.tenantAModule.moduleId)
+      expect(data?.enabled).toBe(TEST_TENANT_MODULES.tenantAModule.enabled)
+    })
+
+    it('User A cannot see Tenant B modules', async () => {
+      const { data, error } = await context.userAClient
+        .from('tenant_modules')
+        .select('*')
+        .eq('id', context.tenantModuleIds.tenantB)
+        .single()
+
+      // Should return no rows or an error (depending on RLS implementation)
+      // The key is that we don't get the data
+      expect(data).toBeNull()
+      expect(error).not.toBeNull()
+    })
+
+    it('User B can see Tenant B modules', async () => {
+      const { data, error } = await context.userBClient
+        .from('tenant_modules')
+        .select('*')
+        .eq('id', context.tenantModuleIds.tenantB)
+        .single()
+
+      expect(error).toBeNull()
+      expect(data).not.toBeNull()
+      expect(data?.id).toBe(context.tenantModuleIds.tenantB)
+      expect(data?.tenant_id).toBe(context.tenantB.id)
+      expect(data?.module_id).toBe(TEST_TENANT_MODULES.tenantBModule.moduleId)
+      expect(data?.enabled).toBe(TEST_TENANT_MODULES.tenantBModule.enabled)
+    })
+
+    it('User B cannot see Tenant A modules', async () => {
+      const { data, error } = await context.userBClient
+        .from('tenant_modules')
+        .select('*')
+        .eq('id', context.tenantModuleIds.tenantA)
+        .single()
+
+      // Should return no rows or an error
+      expect(data).toBeNull()
+      expect(error).not.toBeNull()
+    })
+
+    it('User A sees only Tenant A modules when querying all', async () => {
+      const { data, error } = await context.userAClient
+        .from('tenant_modules')
+        .select('*')
+        .in('id', Object.values(context.tenantModuleIds))
+
+      expect(error).toBeNull()
+      expect(data).not.toBeNull()
+      if (!data) throw new Error('Expected data to exist')
+      expect(data).toHaveLength(1)
+      expect(data[0]?.id).toBe(context.tenantModuleIds.tenantA)
+      expect(data[0]?.tenant_id).toBe(context.tenantA.id)
+    })
+
+    it('User B sees only Tenant B modules when querying all', async () => {
+      const { data, error } = await context.userBClient
+        .from('tenant_modules')
+        .select('*')
+        .in('id', Object.values(context.tenantModuleIds))
+
+      expect(error).toBeNull()
+      expect(data).not.toBeNull()
+      if (!data) throw new Error('Expected data to exist')
+      expect(data).toHaveLength(1)
+      expect(data[0]?.id).toBe(context.tenantModuleIds.tenantB)
+      expect(data[0]?.tenant_id).toBe(context.tenantB.id)
     })
   })
 })

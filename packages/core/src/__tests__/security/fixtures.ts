@@ -81,3 +81,16 @@ export const TEST_USAGE_EVENTS = {
     metadata: { test: 'personal-user-b' },
   },
 } as const
+
+export const TEST_TENANT_MODULES = {
+  tenantAModule: {
+    moduleId: 'agency',
+    enabled: true,
+    settings: { featureA: true },
+  },
+  tenantBModule: {
+    moduleId: 'agency',
+    enabled: true,
+    settings: { featureB: true },
+  },
+} as const

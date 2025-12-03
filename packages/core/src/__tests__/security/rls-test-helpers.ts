@@ -34,6 +34,10 @@ export interface TestContext {
     personalUserA: string
     personalUserB: string
   }
+  tenantModuleIds: {
+    tenantA: string
+    tenantB: string
+  }
 }
 
 /**
@@ -237,6 +241,36 @@ export async function createTestUsageEvent(
 }
 
 /**
+ * Creates a tenant_modules record for testing
+ */
+export async function createTestTenantModule(
+  serviceClient: SupabaseClient<Database>,
+  tenantId: string,
+  moduleData: {
+    moduleId: string
+    enabled: boolean
+    settings: Record<string, unknown>
+  }
+): Promise<string> {
+  const { data, error } = await serviceClient
+    .from('tenant_modules')
+    .insert({
+      tenant_id: tenantId,
+      module_id: moduleData.moduleId,
+      enabled: moduleData.enabled,
+      settings: moduleData.settings as Database['public']['Tables']['tenant_modules']['Insert']['settings'],
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    throw new Error(`Failed to create tenant module: ${error?.message}`)
+  }
+
+  return data.id
+}
+
+/**
  * Cleanup function to remove all test data in the correct order
  */
 export async function cleanupTestData(
@@ -250,6 +284,14 @@ export async function cleanupTestData(
         .from('usage_events')
         .delete()
         .in('id', Object.values(context.usageEventIds))
+    }
+
+    // Delete tenant_modules
+    if (context.tenantModuleIds) {
+      await serviceClient
+        .from('tenant_modules')
+        .delete()
+        .in('id', Object.values(context.tenantModuleIds))
     }
 
     // Delete tenant memberships
