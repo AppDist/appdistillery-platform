@@ -66,7 +66,7 @@ describe('brain module', () => {
       const result = await brainHandle(task)
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Invalid taskType format')
+        expect(result.error).toBe('Unable to process your request. Please try again later.')
       }
     })
   })

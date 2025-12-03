@@ -305,7 +305,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('rate limit exceeded');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Rate limit exceeded. Please try again later.');
+        expect(result).toBe('You\'ve reached the usage limit. Please wait a moment before trying again.');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'rate limit exceeded');
       });
 
@@ -313,7 +313,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('RATE LIMIT ERROR');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Rate limit exceeded. Please try again later.');
+        expect(result).toBe('You\'ve reached the usage limit. Please wait a moment before trying again.');
       });
     });
 
@@ -322,7 +322,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('request timeout');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Request timed out. Please try again.');
+        expect(result).toBe('The request took too long. Please try with a shorter prompt.');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'request timeout');
       });
 
@@ -330,7 +330,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('CONNECTION TIMEOUT');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Request timed out. Please try again.');
+        expect(result).toBe('The request took too long. Please try with a shorter prompt.');
       });
     });
 
@@ -339,7 +339,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('API error occurred');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('API error occurred.');
+        expect(result).toBe('Unable to complete your request. Please try again later.');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'API error occurred');
       });
 
@@ -347,7 +347,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('Invalid API key');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('API error occurred.');
+        expect(result).toBe('AI service temporarily unavailable. Please try again later.');
       });
     });
 
@@ -356,7 +356,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('Something went wrong');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Generation failed. Please try again.');
+        expect(result).toBe('Unable to complete your request. Please try again later.');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'Something went wrong');
       });
 
@@ -364,7 +364,7 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('Schema validation failed');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(result).toBe('Generation failed. Please try again.');
+        expect(result).toBe('Unable to complete your request. Please try again later.');
       });
     });
 
@@ -381,7 +381,7 @@ describe('Shared Adapter Utilities', () => {
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
         expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'Sensitive internal error details');
-        expect(result).toBe('Generation failed. Please try again.');
+        expect(result).toBe('Unable to complete your request. Please try again later.');
       });
     });
   });
@@ -467,7 +467,7 @@ describe('Shared Adapter Utilities', () => {
 
         expect(result).toEqual({
           success: false,
-          error: 'Generation failed. Please try again.',
+          error: 'Unable to complete your request. Please try again later.',
         });
         expect(operation).toHaveBeenCalledTimes(1);
       });
@@ -490,7 +490,7 @@ describe('Shared Adapter Utilities', () => {
 
         expect(result).toEqual({
           success: false,
-          error: 'Rate limit exceeded. Please try again later.',
+          error: 'You\'ve reached the usage limit. Please wait a moment before trying again.',
         });
         expect(operation).toHaveBeenCalledTimes(3);
       });
@@ -598,7 +598,7 @@ describe('Shared Adapter Utilities', () => {
 
         expect(result).toEqual({
           success: false,
-          error: 'API error occurred.',
+          error: 'Unable to complete your request. Please try again later.',
         });
       });
 
@@ -614,7 +614,7 @@ describe('Shared Adapter Utilities', () => {
 
         expect(result).toEqual({
           success: false,
-          error: 'Generation failed. Please try again.',
+          error: 'Unable to complete your request. Please try again later.',
         });
       });
     });

@@ -70,23 +70,64 @@ export function isRetryableError(error: unknown): boolean {
 /**
  * Sanitize error message for client consumption
  *
- * Logs full error details server-side, returns generic message to client.
+ * Logs full error details server-side, returns user-friendly message to client.
+ * Technical details are preserved in console logs for debugging.
  *
  * @param error - Error to sanitize
  * @param adapterName - Name of the adapter for logging
- * @returns Sanitized error message safe for client
+ * @returns User-friendly error message safe for client
  */
 export function sanitizeErrorMessage(error: Error, adapterName: string): string {
-  // Log full error internally for debugging
+  // Log full technical error internally for debugging
   console.error(`[${adapterName}] Error:`, error.message)
 
-  // Return generic message based on error type
+  // Return user-friendly message based on error type
   const msg = error.message.toLowerCase()
-  if (msg.includes('rate limit')) return 'Rate limit exceeded. Please try again later.'
-  if (msg.includes('timeout') || msg.includes('timed out')) return 'Request timed out. Please try again.'
-  if (msg.includes('api')) return 'API error occurred.'
 
-  return 'Generation failed. Please try again.'
+  // Rate limiting - User-friendly with actionable guidance
+  if (msg.includes('rate limit') || msg.includes('429')) {
+    // Extract retry time if available (e.g., "Try again in 30 seconds")
+    const retryMatch = msg.match(/(\d+)\s*(second|minute|hour)/i)
+    if (retryMatch && retryMatch[1] && retryMatch[2]) {
+      const time = retryMatch[1]
+      const unit = retryMatch[2]
+      return `You've reached the usage limit. Please wait ${time} ${unit}${parseInt(time) > 1 ? 's' : ''} before trying again.`
+    }
+    return 'You\'ve reached the usage limit. Please wait a moment before trying again.'
+  }
+
+  // Timeouts - Clear and actionable
+  if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('aborted')) {
+    return 'The request took too long. Please try with a shorter prompt.'
+  }
+
+  // API key / Configuration errors - Hide technical details
+  if (msg.includes('api key') || msg.includes('api_key') || msg.includes('environment variable') || msg.includes('unauthorized') || msg.includes('401')) {
+    return 'AI service temporarily unavailable. Please try again later.'
+  }
+
+  // Network / Connection errors - User-actionable
+  if (msg.includes('network') || msg.includes('connection') || msg.includes('econnrefused') || msg.includes('fetch failed')) {
+    return 'Unable to connect to the AI service. Please check your connection and try again.'
+  }
+
+  // Server errors (5xx)
+  if (msg.includes('502') || msg.includes('503') || msg.includes('504') || msg.includes('server error') || msg.includes('service unavailable')) {
+    return 'AI service temporarily unavailable. Please try again in a few moments.'
+  }
+
+  // Generic API errors
+  if (msg.includes('api') || msg.includes('request failed')) {
+    return 'Unable to complete your request. Please try again later.'
+  }
+
+  // Content/Safety errors - Friendlier guidance
+  if (msg.includes('content') && (msg.includes('policy') || msg.includes('filter') || msg.includes('blocked'))) {
+    return 'Unable to process this request. Please try rephrasing your prompt.'
+  }
+
+  // Generic fallback
+  return 'Unable to complete your request. Please try again later.'
 }
 
 /**

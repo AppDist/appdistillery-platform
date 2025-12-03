@@ -52,6 +52,12 @@ export default async function DashboardLayout({
               >
                 Usage
               </Link>
+              <Link
+                href="/settings"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Settings
+              </Link>
             </nav>
           </div>
 

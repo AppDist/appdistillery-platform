@@ -141,11 +141,11 @@ export default function ModulesPage() {
   return (
     <div className="container max-w-4xl px-4 py-8 md:px-6">
       <Link
-        href="/dashboard"
+        href="/settings"
         className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Dashboard
+        Back to Settings
       </Link>
 
       <div className="mb-8">

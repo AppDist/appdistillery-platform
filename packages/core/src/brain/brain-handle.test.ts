@@ -9,12 +9,22 @@ vi.mock('./adapters/anthropic', () => ({
   generateStructured: vi.fn(),
 }));
 
+vi.mock('./adapters/openai', () => ({
+  generateStructuredWithOpenAI: vi.fn(),
+}));
+
+vi.mock('./adapters/google', () => ({
+  generateStructuredWithGoogle: vi.fn(),
+}));
+
 vi.mock('../ledger', () => ({
   recordUsage: vi.fn(),
 }));
 
 // Import mocked functions
 import { generateStructured } from './adapters/anthropic';
+import { generateStructuredWithOpenAI } from './adapters/openai';
+import { generateStructuredWithGoogle } from './adapters/google';
 import { recordUsage } from '../ledger';
 
 // Test schema
@@ -173,6 +183,113 @@ describe('brainHandle', () => {
         durationMs: expect.any(Number),
         metadata: { task: 'agency.scope', cached: false },
       });
+    });
+  });
+
+  describe('Provider selection', () => {
+    it('defaults to Anthropic when provider not specified', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 42 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+      });
+
+      expect(generateStructured).toHaveBeenCalled();
+      expect(generateStructuredWithOpenAI).not.toHaveBeenCalled();
+      expect(generateStructuredWithGoogle).not.toHaveBeenCalled();
+    });
+
+    it('uses OpenAI adapter when provider is "openai"', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 42 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructuredWithOpenAI).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { provider: 'openai' },
+      });
+
+      expect(generateStructuredWithOpenAI).toHaveBeenCalledWith({
+        schema: TestSchema,
+        prompt: 'User',
+        system: 'System',
+        maxOutputTokens: undefined,
+        temperature: undefined,
+        timeoutMs: undefined,
+      });
+      expect(generateStructured).not.toHaveBeenCalled();
+      expect(generateStructuredWithGoogle).not.toHaveBeenCalled();
+    });
+
+    it('uses Google adapter when provider is "google"', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 42 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructuredWithGoogle).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { provider: 'google' },
+      });
+
+      expect(generateStructuredWithGoogle).toHaveBeenCalledWith({
+        schema: TestSchema,
+        prompt: 'User',
+        system: 'System',
+        maxOutputTokens: undefined,
+        temperature: undefined,
+        timeoutMs: undefined,
+      });
+      expect(generateStructured).not.toHaveBeenCalled();
+      expect(generateStructuredWithOpenAI).not.toHaveBeenCalled();
+    });
+
+    it('uses Anthropic adapter when provider is explicitly "anthropic"', async () => {
+      const mockResult: GenerateResult<TestOutput> = {
+        success: true,
+        object: { title: 'Test', count: 42 },
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      };
+
+      vi.mocked(generateStructured).mockResolvedValue(mockResult);
+
+      await brainHandle({
+        moduleId: 'test',
+        taskType: 'test.task',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        options: { provider: 'anthropic' },
+      });
+
+      expect(generateStructured).toHaveBeenCalled();
+      expect(generateStructuredWithOpenAI).not.toHaveBeenCalled();
+      expect(generateStructuredWithGoogle).not.toHaveBeenCalled();
     });
   });
 
@@ -398,7 +515,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Network connection failed');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to connect to the AI service. Please check your connection and try again.');
         expect(result.usage.durationMs).toBeGreaterThanOrEqual(0);
       }
     });
@@ -416,7 +534,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Unknown error');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to complete your request. Please try again later.');
       }
     });
 
@@ -475,7 +594,8 @@ describe('brainHandle', () => {
       // brainHandle should still return failure result
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Adapter error');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to complete your request. Please try again later.');
       }
 
       // Should log the recordUsage error string
@@ -500,9 +620,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Invalid taskType format');
-        expect(result.error).toContain('invalid');
-        expect(result.error).toContain('module.task');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to process your request. Please try again later.');
       }
 
       // Should not call generateStructured
@@ -520,7 +639,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Invalid taskType format');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to process your request. Please try again later.');
       }
 
       expect(generateStructured).not.toHaveBeenCalled();
@@ -537,7 +657,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Invalid taskType format');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to process your request. Please try again later.');
       }
 
       expect(generateStructured).not.toHaveBeenCalled();
@@ -554,7 +675,8 @@ describe('brainHandle', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('Invalid taskType format');
+        // Error message is now user-friendly
+        expect(result.error).toBe('Unable to process your request. Please try again later.');
       }
 
       expect(generateStructured).not.toHaveBeenCalled();

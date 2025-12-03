@@ -34,6 +34,8 @@ export interface BrainTask<T extends z.ZodType = z.ZodType> {
 
   /** Optional generation options */
   options?: {
+    /** AI provider to use (default: 'anthropic') */
+    provider?: 'anthropic' | 'google' | 'openai';
     maxOutputTokens?: number;
     temperature?: number;
     /** Request timeout in milliseconds (default: 60000ms) */

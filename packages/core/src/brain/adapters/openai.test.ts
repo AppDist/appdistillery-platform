@@ -184,7 +184,7 @@ describe('OpenAI Adapter', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         // Error message should be sanitized
-        expect(result.error).toBe('API error occurred.');
+        expect(result.error).toBe('Unable to complete your request. Please try again later.');
       }
     });
 
@@ -198,7 +198,7 @@ describe('OpenAI Adapter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Rate limit exceeded. Please try again later.');
+        expect(result.error).toBe('You\'ve reached the usage limit. Please wait a moment before trying again.');
       }
     });
 
@@ -212,7 +212,7 @@ describe('OpenAI Adapter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Request timed out. Please try again.');
+        expect(result.error).toBe('The request took too long. Please try with a shorter prompt.');
       }
     });
 
@@ -260,7 +260,7 @@ describe('OpenAI Adapter', () => {
       expect(result.success).toBe(false);
       expect(generateObject).toHaveBeenCalledTimes(3); // MAX_RETRIES
       if (!result.success) {
-        expect(result.error).toBe('Rate limit exceeded. Please try again later.');
+        expect(result.error).toBe('You\'ve reached the usage limit. Please wait a moment before trying again.');
       }
     });
 

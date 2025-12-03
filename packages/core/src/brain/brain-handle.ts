@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { generateStructured } from './adapters/anthropic';
+import { generateStructuredWithOpenAI } from './adapters/openai';
+import { generateStructuredWithGoogle } from './adapters/google';
+import type { GenerateResult } from './adapters/shared';
+import { sanitizeErrorMessage } from './adapters/shared';
 import { recordUsage } from '../ledger';
 import { validatePrompt } from './prompt-sanitizer';
 import { checkRateLimit } from './rate-limiter';
@@ -52,6 +56,61 @@ function deriveAction(taskType: string): string {
     );
   }
   return `${parts[0]}:${parts[1]}:generate`;
+}
+
+/**
+ * Get adapter function based on provider selection
+ *
+ * Routes to the correct AI provider adapter (Anthropic, OpenAI, or Google).
+ * Defaults to Anthropic if provider is not specified.
+ *
+ * @param provider - Provider name ('anthropic' | 'google' | 'openai')
+ * @returns Adapter function for structured generation
+ *
+ * @example
+ * ```typescript
+ * const adapter = getAdapter('google');
+ * const result = await adapter({ schema, prompt, system });
+ * ```
+ */
+function getAdapter<T extends z.ZodType>(
+  provider: 'anthropic' | 'google' | 'openai' = 'anthropic'
+): (options: {
+  schema: T;
+  prompt: string;
+  system?: string;
+  maxOutputTokens?: number;
+  temperature?: number;
+  timeoutMs?: number;
+}) => Promise<GenerateResult<z.infer<T>>> {
+  switch (provider) {
+    case 'google':
+      return generateStructuredWithGoogle as (options: {
+        schema: T;
+        prompt: string;
+        system?: string;
+        maxOutputTokens?: number;
+        temperature?: number;
+      }) => Promise<GenerateResult<z.infer<T>>>;
+    case 'openai':
+      return generateStructuredWithOpenAI as (options: {
+        schema: T;
+        prompt: string;
+        system?: string;
+        maxOutputTokens?: number;
+        temperature?: number;
+      }) => Promise<GenerateResult<z.infer<T>>>;
+    case 'anthropic':
+    default:
+      return generateStructured as (options: {
+        schema: T;
+        prompt: string;
+        system?: string;
+        maxOutputTokens?: number;
+        temperature?: number;
+        timeoutMs?: number;
+      }) => Promise<GenerateResult<z.infer<T>>>;
+  }
 }
 
 /**
@@ -133,9 +192,28 @@ export async function brainHandle<T extends z.ZodType>(
   const rateLimitResult = checkRateLimit(task.tenantId);
   if (!rateLimitResult.allowed) {
     const durationMs = Date.now() - startTime;
+    // Log technical details for debugging
+    console.warn('[brainHandle] Rate limit exceeded:', {
+      tenantId: task.tenantId,
+      retryAfter: rateLimitResult.retryAfter,
+    });
+
+    // User-friendly error with time unit conversion
+    const seconds = rateLimitResult.retryAfter || 30;
+    let timeMessage: string;
+    if (seconds >= 3600) {
+      const hours = Math.ceil(seconds / 3600);
+      timeMessage = `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else if (seconds >= 60) {
+      const minutes = Math.ceil(seconds / 60);
+      timeMessage = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+      timeMessage = `${seconds} second${seconds > 1 ? 's' : ''}`;
+    }
+
     return {
       success: false,
-      error: `Rate limit exceeded. Try again in ${rateLimitResult.retryAfter} seconds`,
+      error: `You've reached the usage limit. Please wait ${timeMessage} before trying again.`,
       usage: { durationMs },
     };
   }
@@ -144,9 +222,22 @@ export async function brainHandle<T extends z.ZodType>(
   const promptValidation = validatePrompt(task.userPrompt);
   if (!promptValidation.valid) {
     const durationMs = Date.now() - startTime;
+    // Log technical error details for debugging
+    console.warn('[brainHandle] Prompt validation failed:', promptValidation.errors);
+
+    // Return user-friendly error message
+    const technicalError = promptValidation.errors[0] ?? 'Invalid prompt';
+    let userFriendlyError = 'Unable to process your request. Please try again.';
+
+    if (technicalError.toLowerCase().includes('empty')) {
+      userFriendlyError = 'Please provide some content for your request.';
+    } else if (technicalError.toLowerCase().includes('exceeds maximum length')) {
+      userFriendlyError = 'Your request is too long. Please try with a shorter prompt.';
+    }
+
     return {
       success: false,
-      error: promptValidation.errors[0] ?? 'Invalid prompt',
+      error: userFriendlyError,
       usage: { durationMs },
     };
   }
@@ -162,21 +253,30 @@ export async function brainHandle<T extends z.ZodType>(
     action = deriveAction(task.taskType);
   } catch (error) {
     const durationMs = Date.now() - startTime;
+    // Log technical error for debugging
+    const technicalError = error instanceof Error ? error.message : 'Invalid task type';
+    console.error('[brainHandle] Invalid task type:', technicalError);
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Invalid task type',
+      error: 'Unable to process your request. Please try again later.',
       usage: { durationMs },
     };
   }
 
   try {
-    // Call Anthropic adapter for structured generation
-    const result = await generateStructured({
+    // Get adapter based on provider selection (defaults to Anthropic)
+    const provider = task.options?.provider ?? 'anthropic';
+    const adapter = getAdapter(provider);
+
+    // Call selected adapter for structured generation
+    const result = await adapter({
       schema: task.schema,
       prompt: promptValidation.sanitizedPrompt!,
       system: task.systemPrompt,
       maxOutputTokens: task.options?.maxOutputTokens,
       temperature: task.options?.temperature,
+      timeoutMs: task.options?.timeoutMs,
     });
 
     const durationMs = Date.now() - startTime;
@@ -263,8 +363,13 @@ export async function brainHandle<T extends z.ZodType>(
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const errorMessage =
+    const technicalError =
       error instanceof Error ? error.message : 'Unknown error';
+
+    // Sanitize error message for user consumption
+    const userFriendlyError = error instanceof Error
+      ? sanitizeErrorMessage(error, 'brainHandle')
+      : 'Unable to complete your request. Please try again later.';
 
     // Record failure (units: 0) - log errors but don't break the flow
     const errorUsageResult = await recordUsage({
@@ -279,7 +384,7 @@ export async function brainHandle<T extends z.ZodType>(
       metadata: {
         task: task.taskType,
         failed: true,
-        error: errorMessage,
+        error: technicalError,
       },
     });
     if (!errorUsageResult.success) {
@@ -288,7 +393,7 @@ export async function brainHandle<T extends z.ZodType>(
 
     return {
       success: false,
-      error: errorMessage,
+      error: userFriendlyError,
       usage: { durationMs },
     };
   }
