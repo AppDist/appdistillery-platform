@@ -110,7 +110,7 @@ const result = await brainHandle({
   userPrompt: buildProposalPrompt(brief),
   schema: ProposalResultSchema,
   options: {
-    maxTokens: 8000,    // Longer output
+    maxOutputTokens: 8000,    // Longer output
     temperature: 0.9,   // More creative
   },
 });

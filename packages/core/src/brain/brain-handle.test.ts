@@ -106,7 +106,7 @@ describe('brainHandle', () => {
         schema: TestSchema,
         prompt: 'User prompt here',
         system: 'System prompt here',
-        maxTokens: undefined,
+        maxOutputTokens: undefined,
         temperature: undefined,
       });
     });
@@ -127,7 +127,7 @@ describe('brainHandle', () => {
         userPrompt: 'User',
         schema: TestSchema,
         options: {
-          maxTokens: 8000,
+          maxOutputTokens: 8000,
           temperature: 0.9,
         },
       });
@@ -136,7 +136,7 @@ describe('brainHandle', () => {
         schema: TestSchema,
         prompt: 'User',
         system: 'System',
-        maxTokens: 8000,
+        maxOutputTokens: 8000,
         temperature: 0.9,
       });
     });

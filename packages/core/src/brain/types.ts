@@ -34,7 +34,7 @@ export interface BrainTask<T extends z.ZodType = z.ZodType> {
 
   /** Optional generation options */
   options?: {
-    maxTokens?: number;
+    maxOutputTokens?: number;
     temperature?: number;
   };
 }

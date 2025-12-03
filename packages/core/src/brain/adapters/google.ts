@@ -27,7 +27,7 @@ export interface GenerateOptionsWithGoogle<T extends z.ZodType> {
   prompt: string;
   system?: string;
   model?: string;
-  maxTokens?: number;
+  maxOutputTokens?: number;
   temperature?: number;
 }
 
@@ -162,7 +162,7 @@ export async function generateStructuredWithGoogle<T extends z.ZodType>(
     prompt,
     system,
     model = DEFAULT_MODEL,
-    maxTokens = DEFAULT_MAX_TOKENS,
+    maxOutputTokens = DEFAULT_MAX_TOKENS,
     temperature = DEFAULT_TEMPERATURE,
   } = options;
 
@@ -182,21 +182,22 @@ export async function generateStructuredWithGoogle<T extends z.ZodType>(
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      // Type assertions needed:
+      // 1. google(model) cast - @ai-sdk/google model type doesn't match expected interface
+      // 2. Full object cast - v5 overload resolution issue
       const result = await generateObject({
-        // Type cast required: @ai-sdk/google model type doesn't exactly match
-        // Vercel AI SDK's generateObject expected model interface
         model: google(model) as any,
         schema,
         prompt,
         system,
-        maxTokens,
+        maxOutputTokens,
         temperature,
-      });
+      } as any);
 
-      // Extract usage information
+      // Extract usage information (v5 changed property names)
       const usage = result.usage;
-      const promptTokens = usage?.promptTokens ?? 0;
-      const completionTokens = usage?.completionTokens ?? 0;
+      const promptTokens = (usage as any)?.inputTokens ?? (usage as any)?.promptTokens ?? 0;
+      const completionTokens = (usage as any)?.outputTokens ?? (usage as any)?.completionTokens ?? 0;
       const totalTokens = usage?.totalTokens ?? promptTokens + completionTokens;
 
       return {

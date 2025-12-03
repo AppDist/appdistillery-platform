@@ -92,7 +92,7 @@ function deriveAction(taskType: string): string {
  *   userPrompt: userPrompt,
  *   schema: ProposalSchema,
  *   options: {
- *     maxTokens: 8000,
+ *     maxOutputTokens: 8000,
  *     temperature: 0.9,
  *   },
  * });
@@ -122,7 +122,7 @@ export async function brainHandle<T extends z.ZodType>(
       schema: task.schema,
       prompt: task.userPrompt,
       system: task.systemPrompt,
-      maxTokens: task.options?.maxTokens,
+      maxOutputTokens: task.options?.maxOutputTokens,
       temperature: task.options?.temperature,
     });
 

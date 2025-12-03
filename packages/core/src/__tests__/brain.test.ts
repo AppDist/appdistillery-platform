@@ -24,14 +24,14 @@ describe('brain module', () => {
         userPrompt: 'Analyze this project request.',
         schema,
         options: {
-          maxTokens: 1000,
+          maxOutputTokens: 1000,
           temperature: 0.7,
         },
       }
 
       expect(task.tenantId).toBe('org-123')
       expect(task.moduleId).toBe('agency')
-      expect(task.options?.maxTokens).toBe(1000)
+      expect(task.options?.maxOutputTokens).toBe(1000)
     })
 
     it('should work without optional options', () => {

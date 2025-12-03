@@ -22,11 +22,11 @@ function createMockResult<T>(
   return {
     object,
     usage: usage
-      ? {
-          promptTokens: usage.promptTokens ?? 0,
-          completionTokens: usage.completionTokens ?? 0,
+      ? ({
+          inputTokens: usage.promptTokens ?? 0,  // v5 uses inputTokens
+          outputTokens: usage.completionTokens ?? 0,  // v5 uses outputTokens
           totalTokens: usage.totalTokens ?? 0,
-        }
+        } as any)
       : undefined,
     finishReason: 'stop',
     response: {} as any,
@@ -37,6 +37,7 @@ function createMockResult<T>(
     rawResponse: undefined,
     experimental_providerMetadata: undefined,
     toJsonResponse: () => ({} as any),
+    reasoning: undefined,  // v5 added reasoning property
   } as GenerateObjectResult<T>;
 }
 
@@ -144,7 +145,7 @@ describe('Anthropic Adapter', () => {
         schema: testSchema,
         prompt: 'Test prompt',
         system: 'System message',
-        maxTokens: 1000,
+        maxOutputTokens: 1000,
         temperature: 0.5,
       });
 
@@ -153,7 +154,7 @@ describe('Anthropic Adapter', () => {
         schema: testSchema,
         prompt: 'Test prompt',
         system: 'System message',
-        maxTokens: 1000,
+        maxOutputTokens: 1000,
         temperature: 0.5,
       });
     });
