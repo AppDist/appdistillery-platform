@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-// Import client-safe auth utilities (no server-only code)
 import { createBrowserSupabaseClient, getAuthErrorMessage } from '@appdistillery/core/auth/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
-export function SignupForm() {
-  const [email, setEmail] = useState('')
+export function ResetPasswordForm() {
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -47,20 +47,6 @@ export function SignupForm() {
     setIsLoading(true)
 
     // Basic validation
-    if (!email.trim()) {
-      setError('Email is required')
-      setIsLoading(false)
-      return
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address')
-      setIsLoading(false)
-      return
-    }
-
     if (!password) {
       setError('Password is required')
       setIsLoading(false)
@@ -84,21 +70,22 @@ export function SignupForm() {
 
     try {
       const supabase = createBrowserSupabaseClient()
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
+      const { error: updateError } = await supabase.auth.updateUser({
         password,
-        options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
-        },
       })
 
-      if (signUpError) {
-        setError(getAuthErrorMessage(signUpError))
+      if (updateError) {
+        setError(getAuthErrorMessage(updateError))
         setIsLoading(false)
         return
       }
 
       setIsSuccess(true)
+
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
     } catch {
       setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
@@ -109,28 +96,23 @@ export function SignupForm() {
     return (
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+          <CardTitle className="text-2xl font-bold">Password reset successful</CardTitle>
           <CardDescription>
-            We sent a confirmation link to{' '}
-            <span className="font-medium text-foreground">{email}</span>
+            Your password has been updated successfully.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Click the link in your email to confirm your account and complete
-            the sign-up process.
+            You will be redirected to the sign in page shortly.
           </p>
         </CardContent>
         <CardFooter>
-          <p className="text-center text-sm text-muted-foreground w-full">
-            Already have an account?{' '}
-            <Link
-              href="/login"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Sign in
-            </Link>
-          </p>
+          <Link
+            href="/login"
+            className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+          >
+            Sign in now
+          </Link>
         </CardFooter>
       </Card>
     )
@@ -139,9 +121,9 @@ export function SignupForm() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+        <CardTitle className="text-2xl font-bold">Reset password</CardTitle>
         <CardDescription>
-          Enter your details to create your account
+          Enter your new password below
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -157,41 +139,28 @@ export function SignupForm() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              disabled={isLoading}
-              aria-describedby={error ? 'error-message' : undefined}
-              className={cn(error && 'border-destructive')}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">New Password</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Create a password"
+              placeholder="Enter your new password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               disabled={isLoading}
+              aria-describedby={error ? 'error-message' : 'password-hint'}
               className={cn(error && 'border-destructive')}
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="password-hint" className="text-xs text-muted-foreground">
               At least 8 characters with uppercase, lowercase, and number
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
             <Input
               id="confirm-password"
               type="password"
-              placeholder="Confirm your password"
+              placeholder="Confirm your new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
@@ -206,15 +175,14 @@ export function SignupForm() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? 'Creating account...' : 'Create account'}
+            {isLoading ? 'Resetting password...' : 'Reset password'}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
             <Link
               href="/login"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              Sign in
+              Back to sign in
             </Link>
           </p>
         </CardFooter>

@@ -103,6 +103,7 @@ export function LoginForm() {
             <div
               id="error-message"
               role="alert"
+              aria-live="polite"
               className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
             >
               {error}
@@ -144,15 +145,23 @@ export function LoginForm() {
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
+          <div className="flex flex-col gap-2">
             <Link
-              href="/signup"
-              className="font-medium text-primary underline-offset-4 hover:underline"
+              href="/forgot-password"
+              className="text-center text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
-              Sign up
+              Forgot your password?
             </Link>
-          </p>
+            <p className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/signup"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Sign up
+              </Link>
+            </p>
+          </div>
         </CardFooter>
       </form>
     </Card>

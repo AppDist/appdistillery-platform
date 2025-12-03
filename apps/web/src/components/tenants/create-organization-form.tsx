@@ -124,6 +124,7 @@ export function CreateOrganizationForm() {
             <div
               id={errorId}
               role="alert"
+              aria-live="polite"
               className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
             >
               {serverError}

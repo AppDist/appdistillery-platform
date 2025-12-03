@@ -160,6 +160,7 @@ export function CreateHouseholdForm() {
             <div
               id="error-message"
               role="alert"
+              aria-live="polite"
               className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
             >
               {error}

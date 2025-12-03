@@ -1,22 +1,25 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import { ThemeProvider } from '@/components/providers/theme-provider'
+import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
   title: 'AppDistillery',
   description: 'Modular micro-SaaS platform',
-};
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.variable}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.variable}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
-  );
+  )
 }
