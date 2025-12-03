@@ -11,27 +11,45 @@ type RecordUsageResult =
   | { success: false; error: string }
 
 /**
- * Create a Supabase admin client with service role access
+ * Cached admin client instance (singleton pattern)
+ */
+let cachedAdminClient: ReturnType<typeof createClient<Database>> | null = null
+
+/**
+ * Get or create Supabase admin client with service role access
  *
+ * Uses singleton pattern to avoid creating multiple clients (5-20ms overhead per call).
  * Uses SUPABASE_SECRET_KEY (service role) to bypass RLS policies.
  * This is required for recordUsage since it's a service operation.
  */
-function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
+function getAdminClient() {
+  if (!cachedAdminClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
 
-  if (!supabaseUrl || !supabaseSecretKey) {
-    throw new Error(
-      'Missing Supabase credentials: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY required'
-    )
+    if (!supabaseUrl || !supabaseSecretKey) {
+      throw new Error(
+        'Missing Supabase credentials: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY required'
+      )
+    }
+
+    cachedAdminClient = createClient<Database>(supabaseUrl, supabaseSecretKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
   }
 
-  return createClient<Database>(supabaseUrl, supabaseSecretKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return cachedAdminClient
+}
+
+/**
+ * Reset the cached admin client (for testing only)
+ * @internal
+ */
+export function __resetAdminClient() {
+  cachedAdminClient = null
 }
 
 /**
@@ -70,8 +88,8 @@ export async function recordUsage(
     // 1. Validate input with Zod
     const validated = RecordUsageInputSchema.parse(input)
 
-    // 2. Create admin client (service role)
-    const supabase = createAdminClient()
+    // 2. Get admin client (singleton)
+    const supabase = getAdminClient()
 
     // 3. Map camelCase to snake_case for database
     const { data, error } = await supabase

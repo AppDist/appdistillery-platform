@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { recordUsage } from './record-usage'
+import { recordUsage, __resetAdminClient } from './record-usage'
 
 // Mock @supabase/supabase-js
 vi.mock('@supabase/supabase-js', () => ({
@@ -39,6 +39,7 @@ process.env.SUPABASE_SECRET_KEY = 'test-secret-key'
 describe('recordUsage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    __resetAdminClient() // Reset singleton for each test
   })
 
   it('records usage event successfully', async () => {

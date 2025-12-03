@@ -111,7 +111,8 @@ export async function getUsageSummary(
     // 4. Call server-side aggregation RPC function
     // This replaces O(n) row transfer + JavaScript aggregation
     // with O(1) aggregated result from PostgreSQL
-    const { data, error } = await supabase.rpc('get_usage_summary', {
+    // Type assertion needed until database types are regenerated
+    const { data, error } = await (supabase.rpc as any)('get_usage_summary', {
       p_tenant_id: validated.tenantId,
       p_start_date: startDate,
     })

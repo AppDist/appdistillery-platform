@@ -115,6 +115,7 @@ export async function uninstallModule(
         updated_at: new Date().toISOString(),
       }
 
+      // Type assertion needed for Supabase client chain inference
       const { error: updateError } = await (supabase
         .from('tenant_modules') as any)
         .update(updateData)

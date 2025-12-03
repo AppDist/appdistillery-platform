@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { createServerSupabaseClient } from '../../auth/supabase-server'
 import { getSessionContext } from '../../auth'
-import type { Database } from '@appdistillery/database'
+import type { Database, Json } from '@appdistillery/database'
 
 type ModuleRow = Database['public']['Tables']['modules']['Row']
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
@@ -108,10 +108,11 @@ export async function installModule(
       if (!existing.enabled) {
         const updateData = {
           enabled: true,
-          settings: validated.settings as any,
+          settings: validated.settings as Json,
           updated_at: new Date().toISOString(),
         }
 
+        // Type assertion needed for Supabase client chain inference
         const { error: updateError } = await (supabase
           .from('tenant_modules') as any)
           .update(updateData)
@@ -139,9 +140,10 @@ export async function installModule(
       tenant_id: session.tenant.id,
       module_id: validated.moduleId,
       enabled: true,
-      settings: validated.settings as any,
+      settings: validated.settings as Json,
     }
 
+    // Type assertion needed for Supabase client chain inference
     const { data: installed, error: installError } = await (supabase
       .from('tenant_modules') as any)
       .insert(insertData)

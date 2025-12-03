@@ -1,6 +1,14 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateObject } from 'ai';
-import { z } from 'zod';
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { generateObject } from 'ai'
+import { z } from 'zod'
+import {
+  type GenerateResult,
+  extractUsage,
+  sleep,
+  isRetryableError,
+  sanitizeErrorMessage,
+  DEFAULT_RETRY_CONFIG,
+} from './shared'
 
 /**
  * Google Gemini adapter using Vercel AI SDK
@@ -10,49 +18,29 @@ import { z } from 'zod';
  */
 
 // Default model configuration
-const DEFAULT_MODEL = 'gemini-2.5-flash';  // Gemini 2.5 Flash - Balanced, agentic
-const DEFAULT_MAX_TOKENS = 4000;
-const DEFAULT_TEMPERATURE = 0.7;
-
-// Retry configuration
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY_MS = 1000;
-const MAX_RETRY_DELAY_MS = 10000;  // 10 second ceiling
+const DEFAULT_MODEL = 'gemini-2.5-flash' // Gemini 2.5 Flash - Balanced, agentic
+const DEFAULT_MAX_TOKENS = 4000
+const DEFAULT_TEMPERATURE = 0.7
 
 /**
  * Options for generateStructuredWithGoogle function
  */
 export interface GenerateOptionsWithGoogle<T extends z.ZodType> {
-  schema: T;
-  prompt: string;
-  system?: string;
-  model?: string;
-  maxOutputTokens?: number;
-  temperature?: number;
+  schema: T
+  prompt: string
+  system?: string
+  model?: string
+  maxOutputTokens?: number
+  temperature?: number
 }
 
-/**
- * Result of generateStructuredWithGoogle function using discriminated union
- */
-export type GenerateResult<T> =
-  | {
-      success: true;
-      object: T;
-      usage: {
-        promptTokens: number;
-        completionTokens: number;
-        totalTokens: number;
-      };
-    }
-  | {
-      success: false;
-      error: string;
-    };
+// Re-export GenerateResult for external use
+export type { GenerateResult }
 
 /**
  * Cached Google Generative AI client instance
  */
-let cachedClient: ReturnType<typeof createGoogleGenerativeAI> | null = null;
+let cachedClient: ReturnType<typeof createGoogleGenerativeAI> | null = null
 
 /**
  * Get or create Google Generative AI client with API key from environment
@@ -62,68 +50,20 @@ let cachedClient: ReturnType<typeof createGoogleGenerativeAI> | null = null;
  * @throws {Error} If GOOGLE_GENERATIVE_AI_API_KEY is not set
  */
 function getGoogleClient() {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
   if (!apiKey) {
     throw new Error(
       'GOOGLE_GENERATIVE_AI_API_KEY environment variable is required. ' +
-      'Add it to your .env.local file.'
-    );
+        'Add it to your .env.local file.'
+    )
   }
 
   if (!cachedClient) {
-    cachedClient = createGoogleGenerativeAI({ apiKey });
+    cachedClient = createGoogleGenerativeAI({ apiKey })
   }
 
-  return cachedClient;
-}
-
-/**
- * Sleep utility for retry delays
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Check if error is retryable (rate limit, timeout, or temporary server error)
- *
- * Prioritizes error status codes when available, falls back to message matching.
- */
-function isRetryableError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-
-  // Check for HTTP status code if available
-  if ('status' in error) {
-    const status = (error as any).status;
-    if ([429, 502, 503, 504].includes(status)) return true;
-  }
-
-  // Fallback to case-insensitive message matching
-  const msg = error.message.toLowerCase();
-  return (
-    msg.includes('rate limit') ||
-    msg.includes('timeout') ||
-    msg.includes('temporarily unavailable')
-  );
-}
-
-/**
- * Sanitize error message for client consumption
- *
- * Logs full error details server-side, returns generic message to client.
- */
-function sanitizeErrorMessage(error: Error): string {
-  // Log full error internally for debugging
-  console.error('[generateStructuredWithGoogle] Error:', error.message);
-
-  // Return generic message based on error type
-  const msg = error.message.toLowerCase();
-  if (msg.includes('rate limit')) return 'Rate limit exceeded. Please try again later.';
-  if (msg.includes('timeout')) return 'Request timed out. Please try again.';
-  if (msg.includes('api')) return 'API error occurred.';
-
-  return 'Generation failed. Please try again.';
+  return cachedClient
 }
 
 /**
@@ -164,27 +104,27 @@ export async function generateStructuredWithGoogle<T extends z.ZodType>(
     model = DEFAULT_MODEL,
     maxOutputTokens = DEFAULT_MAX_TOKENS,
     temperature = DEFAULT_TEMPERATURE,
-  } = options;
+  } = options
 
   // Initialize Google Generative AI client (singleton)
-  let google: ReturnType<typeof createGoogleGenerativeAI>;
+  let google: ReturnType<typeof createGoogleGenerativeAI>
   try {
-    google = getGoogleClient();
+    google = getGoogleClient()
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create Google client',
-    };
+    }
   }
 
-  // Retry loop with exponential backoff
-  let lastError: Error | null = null;
+  const { maxRetries, initialDelayMs, maxDelayMs } = DEFAULT_RETRY_CONFIG
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  // Retry loop with exponential backoff
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Type assertions needed:
-      // 1. google(model) cast - @ai-sdk/google model type doesn't match expected interface
-      // 2. Full object cast - v5 overload resolution issue
+      // Type assertions needed for v5 overload resolution
       const result = await generateObject({
         model: google(model) as any,
         schema,
@@ -192,45 +132,37 @@ export async function generateStructuredWithGoogle<T extends z.ZodType>(
         system,
         maxOutputTokens,
         temperature,
-      } as any);
+      } as any)
 
-      // Extract usage information (v5 changed property names)
-      const usage = result.usage;
-      const promptTokens = (usage as any)?.inputTokens ?? (usage as any)?.promptTokens ?? 0;
-      const completionTokens = (usage as any)?.outputTokens ?? (usage as any)?.completionTokens ?? 0;
-      const totalTokens = usage?.totalTokens ?? promptTokens + completionTokens;
+      // Extract usage information using shared utility
+      const usage = extractUsage(result.usage)
 
       return {
         success: true,
         object: result.object,
-        usage: {
-          promptTokens,
-          completionTokens,
-          totalTokens,
-        },
-      };
+        usage,
+      }
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error');
+      lastError = error instanceof Error ? error : new Error('Unknown error')
 
-      // Check if error is retryable using improved detection
-      if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
-        break;
+      // Check if error is retryable using shared detection
+      if (!isRetryableError(error) || attempt === maxRetries - 1) {
+        break
       }
 
       // Calculate delay with exponential backoff and ceiling
-      const delay = Math.min(
-        INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt),
-        MAX_RETRY_DELAY_MS
-      );
-      await sleep(delay);
+      const delay = Math.min(initialDelayMs * Math.pow(2, attempt), maxDelayMs)
+      await sleep(delay)
     }
   }
 
   // All retries failed - sanitize error message
   return {
     success: false,
-    error: lastError ? sanitizeErrorMessage(lastError) : 'Unknown error occurred',
-  };
+    error: lastError
+      ? sanitizeErrorMessage(lastError, 'generateStructuredWithGoogle')
+      : 'Unknown error occurred',
+  }
 }
 
 /**
