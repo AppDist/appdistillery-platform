@@ -1,4 +1,6 @@
 /**
+ * @integration - requires local Supabase
+ *
  * Module Lifecycle Integration Tests
  *
  * Tests the complete module lifecycle flow:

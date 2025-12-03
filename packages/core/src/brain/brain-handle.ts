@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { generateStructured } from './adapters/anthropic';
 import { recordUsage } from '../ledger';
+import { validatePrompt } from './prompt-sanitizer';
 import type { BrainTask, BrainResult } from './types';
 
 /**
@@ -103,6 +104,22 @@ export async function brainHandle<T extends z.ZodType>(
 ): Promise<BrainResult<z.infer<T>>> {
   const startTime = Date.now();
 
+  // Validate and sanitize user prompt
+  const promptValidation = validatePrompt(task.userPrompt);
+  if (!promptValidation.valid) {
+    const durationMs = Date.now() - startTime;
+    return {
+      success: false,
+      error: promptValidation.errors[0] ?? 'Invalid prompt',
+      usage: { durationMs },
+    };
+  }
+
+  // Log warnings for potential injection patterns (don't block)
+  if (promptValidation.warnings.length > 0) {
+    console.warn('[brainHandle] Prompt warnings:', promptValidation.warnings);
+  }
+
   // Derive action from task type
   let action: string;
   try {
@@ -120,7 +137,7 @@ export async function brainHandle<T extends z.ZodType>(
     // Call Anthropic adapter for structured generation
     const result = await generateStructured({
       schema: task.schema,
-      prompt: task.userPrompt,
+      prompt: promptValidation.sanitizedPrompt!,
       system: task.systemPrompt,
       maxOutputTokens: task.options?.maxOutputTokens,
       temperature: task.options?.temperature,
