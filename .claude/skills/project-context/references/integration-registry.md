@@ -47,65 +47,88 @@ const { data, error } = await supabase
 
 ---
 
-### Anthropic Claude (AI Provider)
+### AI Providers (Multi-Provider Support)
 
 **Purpose:** LLM for scope generation, proposal drafting, and other AI tasks
 
+**Supported Providers:**
+| Provider | Package | Default Model |
+|----------|---------|---------------|
+| Anthropic Claude | `@ai-sdk/anthropic` | claude-sonnet-4-20250514 (default) |
+| OpenAI GPT | `@ai-sdk/openai` | gpt-4o |
+| Google Gemini | `@ai-sdk/google` | gemini-2.0-flash |
+
 **Configuration:**
-- Provider: Anthropic
-- Model: Claude (configured via AI SDK)
-- Access: Via Vercel AI SDK
+- Default: Anthropic Claude
+- Provider selection: Via `BrainTask.provider` field
+- Access: Via Vercel AI SDK adapters
 
 **Client Setup:**
 ```typescript
-import { anthropic } from '@ai-sdk/anthropic'
-import { generateObject } from 'ai'
+// All AI calls go through brainHandle() - NEVER import adapters directly
+import { brainHandle } from '@appdistillery/core/brain'
 
-// All AI calls go through brainHandle()
-const result = await brainHandle('agency.scope', input)
+const result = await brainHandle({
+  task: 'agency.scope',
+  userPrompt: 'Generate scope for client project',
+  outputSchema: ScopeResultSchema,
+  // Optional: override provider
+  provider: 'openai', // 'anthropic' | 'openai' | 'google'
+})
 ```
 
 **Environment Variables:**
-- `ANTHROPIC_API_KEY`
+- `ANTHROPIC_API_KEY` - Required for Anthropic (default)
+- `OPENAI_API_KEY` - Required if using OpenAI
+- `GOOGLE_GENERATIVE_AI_API_KEY` - Required if using Google
 
-**Usage Pattern:**
+**Internal Architecture:**
 ```typescript
-// In @appdistillery/core/brain
-import { generateObject } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
-
-export async function brainHandle<T>(
-  task: BrainTask,
-  input: unknown
-): Promise<BrainResult<T>> {
-  const result = await generateObject({
-    model: anthropic('claude-3-5-sonnet-latest'),
-    schema: task.outputSchema, // Zod schema
-    prompt: task.buildPrompt(input),
-  })
-  return result
-}
+// packages/core/src/brain/adapters/
+├── anthropic.ts   // generateWithAnthropic()
+├── openai.ts      // generateWithOpenAI()
+├── google.ts      // generateWithGoogle()
+└── shared.ts      // Shared utilities, provider resolution
 ```
 
 **Never:**
-- Call Anthropic directly (always use `brainHandle()`)
+- Import adapters directly (always use `brainHandle()`)
 - Return raw AI output without validation
 - Use AI in client components
+- Mix providers in single request
 
 ---
-
-## Planned Integrations (Phase 3+)
 
 ### Sentry (Error Tracking)
 
 **Purpose:** Application error monitoring and performance tracking
 
-**Status:** Deferred to Phase 3
+**Status:** Active
 
-**Environment Variables (planned):**
-- `SENTRY_DSN`
+**Package:** `@sentry/nextjs` ^10.27.0
+
+**Configuration:**
+- Integrated via Next.js instrumentation
+- Captures unhandled errors and performance metrics
+- Source maps uploaded during build
+
+**Environment Variables:**
+- `SENTRY_DSN` - Sentry project DSN
+- `SENTRY_AUTH_TOKEN` - For source map uploads (build time only)
+
+**Usage:**
+```typescript
+// Errors are captured automatically
+// For manual capture:
+import * as Sentry from '@sentry/nextjs'
+
+Sentry.captureException(error)
+Sentry.captureMessage('Custom event')
+```
 
 ---
+
+## Planned Integrations
 
 ### PostHog (Analytics)
 

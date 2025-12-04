@@ -48,9 +48,31 @@ Environment variables are managed **per-app** following Next.js conventions:
 | Property | Value |
 |----------|-------|
 | Type | Secret (server-only) |
-| Required | Yes |
+| Required | Yes (default provider) |
 | Format | `sk-ant-xxx` |
 | Purpose | Anthropic Claude API access |
+
+**Security:** Used only in `brainHandle()` on server.
+
+### OPENAI_API_KEY
+
+| Property | Value |
+|----------|-------|
+| Type | Secret (server-only) |
+| Required | Only if using OpenAI provider |
+| Format | `sk-xxx` |
+| Purpose | OpenAI GPT API access |
+
+**Security:** Used only in `brainHandle()` on server.
+
+### GOOGLE_GENERATIVE_AI_API_KEY
+
+| Property | Value |
+|----------|-------|
+| Type | Secret (server-only) |
+| Required | Only if using Google provider |
+| Format | `AIzaSy...` |
+| Purpose | Google Gemini API access |
 
 **Security:** Used only in `brainHandle()` on server.
 
@@ -65,14 +87,33 @@ Environment variables are managed **per-app** following Next.js conventions:
 | Development | `http://localhost:3000` |
 | Production | `https://your-domain.com` |
 
+## Monitoring Variables
+
+### SENTRY_DSN
+
+| Property | Value |
+|----------|-------|
+| Type | Secret (server-only) |
+| Required | Yes (for production) |
+| Format | `https://xxx@xxx.ingest.sentry.io/xxx` |
+| Purpose | Sentry error tracking |
+
+### SENTRY_AUTH_TOKEN
+
+| Property | Value |
+|----------|-------|
+| Type | Secret (build-time only) |
+| Required | Yes (for source maps) |
+| Format | `sntrys_xxx` |
+| Purpose | Upload source maps during build |
+
 ## Optional Variables (Deferred)
 
 These are planned for future phases:
 
 | Variable | Purpose | Phase |
 |----------|---------|-------|
-| SENTRY_DSN | Error tracking | Phase 3 |
-| NEXT_PUBLIC_POSTHOG_KEY | Product analytics | Phase 3 |
+| NEXT_PUBLIC_POSTHOG_KEY | Product analytics | Future |
 
 ## Environment Setup
 
