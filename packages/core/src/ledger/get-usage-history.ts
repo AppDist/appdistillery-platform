@@ -6,6 +6,7 @@ import {
   type UsageHistoryOptions,
   type UsageEvent,
 } from './types'
+import { logger } from '../utils/logger'
 
 /**
  * Result type for getUsageHistory
@@ -52,6 +53,32 @@ type GetUsageHistoryResult =
  *   userId: 'user-456'
  * })
  * ```
+ *
+ * ## Query Performance Analysis
+ *
+ * **Index Usage (depends on filters):**
+ * - `idx_usage_events_tenant_created (tenant_id, created_at DESC)` - Primary index for tenant queries
+ * - `idx_usage_events_action (action)` - Used when filtering by action
+ * - `idx_usage_events_user_id (user_id)` - Used for Personal mode queries
+ * - `idx_usage_events_module_id (module_id)` - Used when filtering by module
+ *
+ * **EXPLAIN ANALYZE (typical tenant query with pagination):**
+ * ```sql
+ * -- Expected plan for tenant_id + ORDER BY created_at DESC + LIMIT
+ * Limit  (cost=xxx..xxx rows=50)
+ *   -> Index Scan Backward using idx_usage_events_tenant_created on usage_events
+ *        Index Cond: (tenant_id = 'uuid')
+ * ```
+ *
+ * **Performance Considerations:**
+ * - COUNT(*) with `count: 'exact'` requires full index scan for accurate count
+ * - For very large datasets (100K+ events), consider removing exact count or using estimate
+ * - RLS uses `user_is_tenant_member()` SECURITY DEFINER function to avoid recursion
+ * - Pagination via OFFSET is efficient for reasonable page depths (<1000 pages)
+ *
+ * **Potential Optimization (if count becomes bottleneck):**
+ * - Replace `{ count: 'exact' }` with `{ count: 'estimated' }` for faster response
+ * - Or remove count entirely and use cursor-based pagination
  */
 export async function getUsageHistory(
   options: UsageHistoryOptions
@@ -64,7 +91,7 @@ export async function getUsageHistory(
     // Validation errors from Zod describe user input, safe to expose
     const message =
       error instanceof Error ? error.message : 'Unknown error occurred'
-    console.error('[getUsageHistory] Validation error:', message)
+    logger.error('getUsageHistory', 'Validation error', { message })
     return {
       success: false,
       error: message,
@@ -119,7 +146,7 @@ export async function getUsageHistory(
     const { data, error, count } = await query
 
     if (error) {
-      console.error('[getUsageHistory] Database error:', error)
+      logger.error('getUsageHistory', 'Database error', { error })
       return {
         success: false,
         error: 'Failed to retrieve usage history',
@@ -164,7 +191,7 @@ export async function getUsageHistory(
     const message =
       error instanceof Error ? error.message : 'Unknown error occurred'
 
-    console.error('[getUsageHistory] Runtime error:', message)
+    logger.error('getUsageHistory', 'Runtime error', { message })
 
     return {
       success: false,
