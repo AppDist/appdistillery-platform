@@ -7,6 +7,7 @@ node_modules
 out
 dist
 build
+*.tsbuildinfo
 
 # Environment
 .env
@@ -16,6 +17,7 @@ build
 # IDE
 .idea
 .vscode
+.cursor
 *.swp
 *.swo
 
@@ -32,6 +34,8 @@ pnpm-debug.log*
 
 # Testing
 coverage
+playwright-report
+test-results
 
 # Supabase
 supabase/.temp
