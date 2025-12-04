@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@appdistillery/database'
 import { RecordUsageInputSchema } from './types'
 import type { RecordUsageInput, UsageEvent } from './types'
+import { logger } from '../utils/logger';
 
 /**
  * Result type for recordUsage
@@ -109,7 +110,7 @@ export async function recordUsage(
       .single()
 
     if (error) {
-      console.error('[recordUsage] Database error:', error)
+      logger.error('recordUsage', 'Database error', { error });
       return {
         success: false,
         error: `Failed to record usage: ${error.message}`,
@@ -145,7 +146,7 @@ export async function recordUsage(
     const message =
       error instanceof Error ? error.message : 'Unknown error occurred'
 
-    console.error('[recordUsage] Error:', message)
+    logger.error('recordUsage', 'Error', { message });
 
     return {
       success: false,

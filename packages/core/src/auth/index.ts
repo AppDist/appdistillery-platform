@@ -1,12 +1,14 @@
 import { createServerSupabaseClient } from './supabase-server'
 import { getUserTenants } from './get-user-tenants'
 import { getActiveTenant } from './get-active-tenant'
+import { getAuthenticatedUserId, fetchUserProfile, fetchTenantMembership } from './helpers'
 import type {
   UserProfile,
   Tenant,
   TenantMember,
-  UserProfileRow,
+  TenantMemberRow,
 } from './types'
+import { logger } from '../utils/logger';
 
 /**
  * Session context for authenticated requests
@@ -54,46 +56,23 @@ export interface SessionContext {
  * ```
  */
 export async function getSessionContext(): Promise<SessionContext | null> {
-  const supabase = await createServerSupabaseClient()
-
   // Validate JWT with auth server (getUser() not getSession())
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const userId = await getAuthenticatedUserId()
+  if (!userId) {
     return null
   }
 
   // Fetch user profile from database
-  const { data: profileRow, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profileRow) {
-    console.error('[getSessionContext] Failed to fetch user profile:', profileError)
+  const { profile: userProfile, error: profileError } = await fetchUserProfile(userId)
+  if (!userProfile) {
+    logger.error('getSessionContext', 'Failed to fetch user profile', { error: profileError });
     return null
   }
 
-  // Transform profile row to camelCase
-  // Using 'as any' temporarily until database types are generated
-  const rawProfile = profileRow as any
-  const userProfile: UserProfile = {
-    id: rawProfile.id,
-    displayName: rawProfile.display_name,
-    email: rawProfile.email,
-    avatarUrl: rawProfile.avatar_url,
-    createdAt: new Date(rawProfile.created_at),
-    updatedAt: new Date(rawProfile.updated_at),
-  }
-
   // Get active tenant from cookie (user's selected tenant)
-  // Pass user.id to avoid redundant getUser() call
+  // Pass userId to avoid redundant getUser() call
   try {
-    const activeTenant = await getActiveTenant(user.id)
+    const activeTenant = await getActiveTenant(userId)
 
     // If no active tenant, user is working in personal mode
     if (!activeTenant) {
@@ -105,15 +84,10 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     }
 
     // Fetch user's membership details for the active tenant
-    const { data: membershipRow, error: membershipError } = await supabase
-      .from('tenant_members')
-      .select('id, tenant_id, user_id, role, joined_at')
-      .eq('user_id', user.id)
-      .eq('tenant_id', activeTenant.id)
-      .single()
+    const { membership, error: membershipError } = await fetchTenantMembership(userId, activeTenant.id)
 
-    if (membershipError || !membershipRow) {
-      console.error('[getSessionContext] Failed to fetch membership:', membershipError)
+    if (!membership) {
+      logger.error('getSessionContext', 'Failed to fetch membership', { error: membershipError });
       // Fallback to personal user mode if membership fetch fails
       return {
         user: userProfile,
@@ -122,23 +96,13 @@ export async function getSessionContext(): Promise<SessionContext | null> {
       }
     }
 
-    // Transform membership row to camelCase
-    const rawMembership = membershipRow as any
-    const membership: TenantMember = {
-      id: rawMembership.id,
-      tenantId: rawMembership.tenant_id,
-      userId: rawMembership.user_id,
-      role: rawMembership.role,
-      joinedAt: new Date(rawMembership.joined_at),
-    }
-
     return {
       user: userProfile,
       tenant: activeTenant,
       membership,
     }
   } catch (error) {
-    console.error('[getSessionContext] Failed to get active tenant:', error)
+    logger.error('getSessionContext', 'Failed to get active tenant', { error });
     // Fallback to personal user mode if tenant fetch fails
     return {
       user: userProfile,

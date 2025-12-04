@@ -1,14 +1,18 @@
 'use server'
 
-import { createServerSupabaseClient } from '../supabase-server'
 import {
   CreateHouseholdSchema,
   CreateOrganizationSchema,
   type CreateHouseholdInput,
   type CreateOrganizationInput,
 } from '../schemas/tenant'
-import type { Tenant, TenantRow } from '../types'
-import { transformTenantRow } from '../transforms'
+import type { Tenant } from '../types'
+import {
+  getAuthenticatedUserId,
+  isSlugTaken,
+  createTenantWithOwner,
+  fetchTenant
+} from '../helpers'
 
 /**
  * Result type for tenant creation operations
@@ -46,87 +50,35 @@ export async function createHousehold(
   input: unknown
 ): Promise<CreateTenantResult> {
   try {
-    // 1. Validate input with Zod
     const validated = CreateHouseholdSchema.parse(input)
 
-    // 2. Get authenticated user
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return {
-        success: false,
-        error: 'Unauthorized: You must be logged in to create a household',
-      }
+    const userId = await getAuthenticatedUserId()
+    if (!userId) {
+      return { success: false, error: 'Unauthorized: You must be logged in to create a household' }
     }
 
-    // 3. Check for duplicate slug
-    const { data: existing } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('slug', validated.slug)
-      .single()
-
-    if (existing) {
-      return {
-        success: false,
-        error: `The slug "${validated.slug}" is already taken. Please choose a different one.`,
-      }
+    const slugExists = await isSlugTaken(validated.slug)
+    if (slugExists) {
+      return { success: false, error: `The slug "${validated.slug}" is already taken. Please choose a different one.` }
     }
 
-    // 4. Call database function to create tenant + membership atomically
-    const { data, error } = await supabase.rpc('create_tenant_with_owner', {
-      p_type: 'household' as const,
-      p_name: validated.name,
-      p_slug: validated.slug,
-    } as any)
-
-    if (error) {
-      console.error('[createHousehold] Database error:', error)
-      return {
-        success: false,
-        error: 'Failed to create household. Please try again.',
-      }
+    const tenantId = await createTenantWithOwner('household', validated.name, validated.slug)
+    if (!tenantId) {
+      return { success: false, error: 'Failed to create household. Please try again.' }
     }
 
-    // 5. Fetch the created tenant to return full details
-    const { data: tenantRow, error: fetchError } = await supabase
-      .from('tenants')
-      .select('*')
-      .eq('id', data)
-      .single()
-
-    if (fetchError || !tenantRow) {
-      console.error('[createHousehold] Fetch error:', fetchError)
-      return {
-        success: false,
-        error: 'Household created but failed to retrieve details.',
-      }
+    const tenant = await fetchTenant(tenantId)
+    if (!tenant) {
+      return { success: false, error: 'Household created but failed to retrieve details.' }
     }
 
-    // 6. Transform and return
-    return {
-      success: true,
-      data: transformTenantRow(tenantRow as unknown as TenantRow),
-    }
+    return { success: true, data: tenant }
   } catch (error) {
-    // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      return {
-        success: false,
-        error: error.message,
-      }
+      return { success: false, error: error.message }
     }
-
-    // Handle unexpected errors
     console.error('[createHousehold] Unexpected error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
+    return { success: false, error: 'An unexpected error occurred. Please try again.' }
   }
 }
 
@@ -160,88 +112,40 @@ export async function createOrganization(
   input: unknown
 ): Promise<CreateTenantResult> {
   try {
-    // 1. Validate input with Zod
     const validated = CreateOrganizationSchema.parse(input)
 
-    // 2. Get authenticated user
-    const supabase = await createServerSupabaseClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return {
-        success: false,
-        error: 'Unauthorized: You must be logged in to create an organization',
-      }
+    const userId = await getAuthenticatedUserId()
+    if (!userId) {
+      return { success: false, error: 'Unauthorized: You must be logged in to create an organization' }
     }
 
-    // 3. Check for duplicate slug
-    const { data: existing } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('slug', validated.slug)
-      .single()
-
-    if (existing) {
-      return {
-        success: false,
-        error: `The slug "${validated.slug}" is already taken. Please choose a different one.`,
-      }
+    const slugExists = await isSlugTaken(validated.slug)
+    if (slugExists) {
+      return { success: false, error: `The slug "${validated.slug}" is already taken. Please choose a different one.` }
     }
 
-    // 4. Call database function to create tenant + membership atomically
-    const { data, error } = await supabase.rpc('create_tenant_with_owner', {
-      p_type: 'organization' as const,
-      p_name: validated.name,
-      p_slug: validated.slug,
-      ...(validated.orgNumber && { p_org_number: validated.orgNumber }),
-      ...(validated.billingEmail && { p_billing_email: validated.billingEmail }),
-    } as any)
-
-    if (error) {
-      console.error('[createOrganization] Database error:', error)
-      return {
-        success: false,
-        error: 'Failed to create organization. Please try again.',
-      }
+    const tenantId = await createTenantWithOwner(
+      'organization',
+      validated.name,
+      validated.slug,
+      validated.orgNumber,
+      validated.billingEmail
+    )
+    if (!tenantId) {
+      return { success: false, error: 'Failed to create organization. Please try again.' }
     }
 
-    // 5. Fetch the created tenant to return full details
-    const { data: tenantRow, error: fetchError } = await supabase
-      .from('tenants')
-      .select('*')
-      .eq('id', data)
-      .single()
-
-    if (fetchError || !tenantRow) {
-      console.error('[createOrganization] Fetch error:', fetchError)
-      return {
-        success: false,
-        error: 'Organization created but failed to retrieve details.',
-      }
+    const tenant = await fetchTenant(tenantId)
+    if (!tenant) {
+      return { success: false, error: 'Organization created but failed to retrieve details.' }
     }
 
-    // 6. Transform and return
-    return {
-      success: true,
-      data: transformTenantRow(tenantRow as unknown as TenantRow),
-    }
+    return { success: true, data: tenant }
   } catch (error) {
-    // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      return {
-        success: false,
-        error: error.message,
-      }
+      return { success: false, error: error.message }
     }
-
-    // Handle unexpected errors
     console.error('[createOrganization] Unexpected error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
+    return { success: false, error: 'An unexpected error occurred. Please try again.' }
   }
 }

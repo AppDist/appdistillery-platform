@@ -306,7 +306,7 @@ describe('Shared Adapter Utilities', () => {
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
         expect(result).toBe('You\'ve reached the usage limit. Please wait a moment before trying again.');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'rate limit exceeded');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error', { message: 'rate limit exceeded' });
       });
 
       it('returns rate limit message for case-insensitive "RATE LIMIT"', () => {
@@ -323,7 +323,7 @@ describe('Shared Adapter Utilities', () => {
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
         expect(result).toBe('The request took too long. Please try with a shorter prompt.');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'request timeout');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error', { message: 'request timeout' });
       });
 
       it('returns timeout message for case-insensitive "TIMEOUT"', () => {
@@ -340,7 +340,7 @@ describe('Shared Adapter Utilities', () => {
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
         expect(result).toBe('Unable to complete your request. Please try again later.');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'API error occurred');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error', { message: 'API error occurred' });
       });
 
       it('returns API error message for case-insensitive "API"', () => {
@@ -357,7 +357,7 @@ describe('Shared Adapter Utilities', () => {
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
         expect(result).toBe('Unable to complete your request. Please try again later.');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'Something went wrong');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error', { message: 'Something went wrong' });
       });
 
       it('returns generic message for validation errors', () => {
@@ -373,14 +373,14 @@ describe('Shared Adapter Utilities', () => {
         const error = new Error('Test error');
         sanitizeErrorMessage(error, 'AnthropicAdapter');
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[AnthropicAdapter] Error:', 'Test error');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[AnthropicAdapter] Error', { message: 'Test error' });
       });
 
       it('logs full error message before sanitizing', () => {
         const error = new Error('Sensitive internal error details');
         const result = sanitizeErrorMessage(error, 'TestAdapter');
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error:', 'Sensitive internal error details');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[TestAdapter] Error', { message: 'Sensitive internal error details' });
         expect(result).toBe('Unable to complete your request. Please try again later.');
       });
     });

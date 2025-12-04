@@ -10,7 +10,7 @@ export type { ModuleManifest, InstalledModule } from './types'
 
 // Export helpers
 export { getInstalledModules } from './get-installed-modules'
-export { isModuleEnabled } from './is-module-enabled'
+export { isModuleEnabled, invalidateModuleCache } from './is-module-enabled'
 
 // Export schemas (kept separate from 'use server' files)
 export {

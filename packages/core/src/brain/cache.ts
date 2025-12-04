@@ -40,6 +40,30 @@ function hashObject(obj: unknown): string {
 }
 
 /**
+ * Extract a stable description from a Zod schema
+ *
+ * Tries to extract schema description in a type-safe way.
+ * Falls back to stringifying the schema definition.
+ *
+ * @param schema - Zod schema
+ * @returns Schema description string
+ */
+function getSchemaDescription<T extends z.ZodType>(schema: T): string {
+  // First try: explicit description
+  if (schema.description) {
+    return schema.description;
+  }
+
+  // Second try: ZodObject shape (common case)
+  if ('shape' in schema && typeof schema.shape === 'object') {
+    return JSON.stringify(schema.shape);
+  }
+
+  // Fallback: use internal definition
+  return JSON.stringify(schema._def);
+}
+
+/**
  * Generate cache key for brain task
  *
  * Key combines: taskType + prompt hash + schema hash for uniqueness
@@ -57,9 +81,7 @@ export function generateCacheKey<T extends z.ZodType>(
   schema: T
 ): string {
   const promptHash = hashObject({ systemPrompt, userPrompt });
-  // Use schema description for hashing (stable across instances)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const schemaDescription = schema.description ?? JSON.stringify((schema as any).shape ?? schema._def);
+  const schemaDescription = getSchemaDescription(schema);
   const schemaHash = hashObject(schemaDescription);
 
   return `${taskType}:${promptHash}:${schemaHash}`;

@@ -600,8 +600,8 @@ describe('brainHandle', () => {
 
       // Should log the recordUsage error string
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[brainHandle] Failed to record usage:',
-        'Database connection failed'
+        '[brainHandle] Failed to record usage',
+        { error: 'Database connection failed' }
       );
 
       consoleErrorSpy.mockRestore();

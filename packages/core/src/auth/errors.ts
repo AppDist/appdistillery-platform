@@ -1,4 +1,5 @@
 import type { AuthError } from '@supabase/supabase-js'
+import { logger } from '../utils/logger';
 
 /**
  * Maps Supabase auth errors to user-friendly messages
@@ -20,7 +21,7 @@ export function getAuthErrorMessage(error: AuthError): string {
       return 'Please enter a valid password'
     default:
       // Log the actual error for debugging, return generic message
-      console.error('[Auth Error]', error.message)
+      logger.error('Auth Error', error.message);
       return 'Authentication failed. Please try again.'
   }
 }

@@ -4,7 +4,9 @@ import { z } from 'zod'
 import { createServerSupabaseClient } from '../../auth/supabase-server'
 import { getSessionContext } from '../../auth'
 import { UninstallModuleSchema } from '../schemas'
+import { invalidateModuleCache } from '../is-module-enabled'
 import type { Database } from '@appdistillery/database'
+import { logger } from '../../utils/logger';
 
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
 
@@ -100,24 +102,26 @@ export async function uninstallModule(
         return { success: false, error: 'Module already disabled' }
       }
 
-      const updateData = {
-        enabled: false,
-        updated_at: new Date().toISOString(),
-      }
-
-      // Type assertion needed for Supabase client chain inference
-      const { error: updateError } = await (supabase
-        .from('tenant_modules') as any)
-        .update(updateData)
+      // Supabase RLS inference limitation: type assertion needed for update operations
+      // This is safe because we've already validated tenant ownership via session.tenant.id
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase.from('tenant_modules') as any)
+        .update({
+          enabled: false,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', existing.id)
 
       if (updateError) {
-        console.error('[uninstallModule] Database error:', updateError)
+        logger.error('uninstallModule', 'Database error', { error: updateError });
         return {
           success: false,
           error: 'Failed to disable module. Please try again.',
         }
       }
+
+      // Invalidate cache after disabling
+      invalidateModuleCache(session.tenant.id, validated.moduleId);
 
       return {
         success: true,
@@ -132,12 +136,15 @@ export async function uninstallModule(
       .eq('id', existing.id)
 
     if (deleteError) {
-      console.error('[uninstallModule] Database error:', deleteError)
+      logger.error('uninstallModule', 'Database error', { error: deleteError });
       return {
         success: false,
         error: 'Failed to uninstall module. Please try again.',
       }
     }
+
+    // Invalidate cache after hard delete
+    invalidateModuleCache(session.tenant.id, validated.moduleId);
 
     return {
       success: true,
@@ -153,7 +160,7 @@ export async function uninstallModule(
     }
 
     // Handle unexpected errors
-    console.error('[uninstallModule] Unexpected error:', error)
+    logger.error('uninstallModule', 'Unexpected error', { error });
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',

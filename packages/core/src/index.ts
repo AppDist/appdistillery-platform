@@ -3,3 +3,5 @@ export * from './auth';
 export * from './brain';
 export * from './ledger';
 export * from './modules';
+export * from './utils/logger';
+export * from './utils/error-codes';

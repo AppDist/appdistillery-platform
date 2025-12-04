@@ -7,6 +7,7 @@ import {
   type UsageByAction,
 } from './types'
 import { z } from 'zod'
+import { logger } from '../utils/logger';
 
 /**
  * Result type for getUsageSummary
@@ -93,7 +94,7 @@ export async function getUsageSummary(
     // Validation errors from Zod describe user input, safe to expose
     const message =
       error instanceof Error ? error.message : 'Unknown error occurred'
-    console.error('[getUsageSummary] Validation error:', message)
+    logger.error('getUsageSummary', 'Validation error', { message });
     return {
       success: false,
       error: message,
@@ -118,7 +119,7 @@ export async function getUsageSummary(
     })
 
     if (error) {
-      console.error('[getUsageSummary] RPC error:', error)
+      logger.error('getUsageSummary', 'RPC error', { error });
       return {
         success: false,
         error: 'Failed to retrieve usage summary',
@@ -162,7 +163,7 @@ export async function getUsageSummary(
     const message =
       error instanceof Error ? error.message : 'Unknown error occurred'
 
-    console.error('[getUsageSummary] Runtime error:', message)
+    logger.error('getUsageSummary', 'Runtime error', { message });
 
     return {
       success: false,

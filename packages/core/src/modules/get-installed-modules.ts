@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '../auth/supabase-server'
 import type { InstalledModule } from './types'
+import { logger } from '../utils/logger';
 
 /**
  * Get all installed modules for a tenant
@@ -66,7 +67,7 @@ export async function getInstalledModules(
   const { data, error } = await query
 
   if (error) {
-    console.error('[getInstalledModules] Database error:', error)
+    logger.error('getInstalledModules', 'Database error', { error });
     throw new Error(`Failed to fetch installed modules: ${error.message}`)
   }
 

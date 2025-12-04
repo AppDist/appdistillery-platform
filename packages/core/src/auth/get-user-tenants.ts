@@ -4,6 +4,7 @@ import type {
   TenantRow,
 } from './types'
 import { transformTenantRow, transformMemberRow } from './transforms'
+import { logger } from '../utils/logger';
 
 /**
  * Fetch all tenants for the authenticated user
@@ -73,7 +74,7 @@ export async function getUserTenants(): Promise<TenantMembership[]> {
     .order('joined_at', { ascending: false })
 
   if (error) {
-    console.error('[getUserTenants] Database error:', error)
+    logger.error('getUserTenants', 'Database error', { error });
     throw new Error('Failed to fetch user tenants')
   }
 
@@ -83,14 +84,33 @@ export async function getUserTenants(): Promise<TenantMembership[]> {
   }
 
   // Transform database rows to TypeScript objects
-  // Using 'as any' temporarily until database types are generated
-  return (data as any[])
-    .filter((row) => row.tenants) // Type guard for joined data
+  interface JoinedRow {
+    id: string
+    tenant_id: string
+    user_id: string
+    role: string
+    joined_at: string
+    tenants: {
+      id: string
+      type: string
+      name: string
+      slug: string
+      org_number: string | null
+      billing_email: string | null
+      settings: Record<string, unknown>
+      created_at: string
+      updated_at: string
+    } | null
+  }
+
+  return (data as JoinedRow[])
+    .filter((row): row is JoinedRow & { tenants: NonNullable<JoinedRow['tenants']> } => {
+      // Type guard: ensure tenants data exists (join was successful)
+      return row.tenants !== null && row.tenants !== undefined
+    })
     .map((row) => {
       // Supabase returns joined data as a single object (not array)
-      const tenantRow = Array.isArray(row.tenants)
-        ? row.tenants[0]
-        : row.tenants
+      const tenantRow = row.tenants
 
       return {
         tenant: transformTenantRow(tenantRow as TenantRow),
@@ -98,7 +118,7 @@ export async function getUserTenants(): Promise<TenantMembership[]> {
           id: row.id,
           tenant_id: row.tenant_id,
           user_id: row.user_id,
-          role: row.role,
+          role: row.role as 'owner' | 'admin' | 'member',
           joined_at: row.joined_at,
         }),
       }

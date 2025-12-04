@@ -4,7 +4,9 @@ import { z } from 'zod'
 import { createServerSupabaseClient } from '../../auth/supabase-server'
 import { getSessionContext } from '../../auth'
 import { InstallModuleSchema } from '../schemas'
+import { invalidateModuleCache } from '../is-module-enabled'
 import type { Database, Json } from '@appdistillery/database'
+import { logger } from '../../utils/logger';
 
 type ModuleRow = Database['public']['Tables']['modules']['Row']
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
@@ -100,25 +102,27 @@ export async function installModule(
     if (existing) {
       // If already installed but disabled, re-enable it
       if (!existing.enabled) {
-        const updateData = {
-          enabled: true,
-          settings: validated.settings as Json,
-          updated_at: new Date().toISOString(),
-        }
-
-        // Type assertion needed for Supabase client chain inference
-        const { error: updateError } = await (supabase
-          .from('tenant_modules') as any)
-          .update(updateData)
+        // Supabase RLS inference limitation: type assertion needed for update operations
+        // This is safe because we've already validated tenant ownership via session.tenant.id
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: updateError } = await (supabase.from('tenant_modules') as any)
+          .update({
+            enabled: true,
+            settings: validated.settings as Json,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', existing.id)
 
         if (updateError) {
-          console.error('[installModule] Database error:', updateError)
+          logger.error('installModule', 'Database error', { error: updateError });
           return {
             success: false,
             error: 'Failed to re-enable module. Please try again.',
           }
         }
+
+        // Invalidate cache after re-enabling
+        invalidateModuleCache(session.tenant.id, validated.moduleId);
 
         return {
           success: true,
@@ -130,27 +134,29 @@ export async function installModule(
     }
 
     // 5. Install module (create tenant_modules record)
-    const insertData = {
-      tenant_id: session.tenant.id,
-      module_id: validated.moduleId,
-      enabled: true,
-      settings: validated.settings as Json,
-    }
-
-    // Type assertion needed for Supabase client chain inference
-    const { data: installed, error: installError } = await (supabase
-      .from('tenant_modules') as any)
-      .insert(insertData)
+    // Supabase RLS inference limitation: type assertion needed for insert operations
+    // This is safe because we're inserting with the validated session.tenant.id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: installed, error: installError } = await (supabase.from('tenant_modules') as any)
+      .insert({
+        tenant_id: session.tenant.id,
+        module_id: validated.moduleId,
+        enabled: true,
+        settings: validated.settings as Json,
+      })
       .select('id, module_id')
       .single()
 
     if (installError || !installed) {
-      console.error('[installModule] Database error:', installError)
+      logger.error('installModule', 'Database error', { error: installError });
       return {
         success: false,
         error: 'Failed to install module. Please try again.',
       }
     }
+
+    // Invalidate cache after successful install
+    invalidateModuleCache(session.tenant.id, installed.module_id);
 
     return {
       success: true,
@@ -166,7 +172,7 @@ export async function installModule(
     }
 
     // Handle unexpected errors
-    console.error('[installModule] Unexpected error:', error)
+    logger.error('installModule', 'Unexpected error', { error });
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { isModuleEnabled } from './is-module-enabled'
+import { isModuleEnabled, clearModuleCache } from './is-module-enabled'
 
 // Mock Supabase server client
 const mockSupabase = {
@@ -16,6 +16,8 @@ vi.mock('../auth/supabase-server', () => ({
 describe('isModuleEnabled', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Clear cache before each test to ensure isolation
+    clearModuleCache()
   })
 
   it('returns true when module is enabled for tenant', async () => {
@@ -156,5 +158,61 @@ describe('isModuleEnabled', () => {
 
     // Verify tenant isolation
     expect(mockSupabase.eq).toHaveBeenCalledWith('tenant_id', 'tenant-789')
+  })
+
+  it('caches result for subsequent calls with same tenant and module', async () => {
+    mockSupabase.from.mockReturnValue(mockSupabase)
+    mockSupabase.select.mockReturnValue(mockSupabase)
+    mockSupabase.eq.mockReturnValue(mockSupabase)
+    mockSupabase.maybeSingle.mockResolvedValue({
+      data: { enabled: true },
+      error: null,
+    })
+
+    // First call should hit database
+    const result1 = await isModuleEnabled('tenant-cache-test', 'agency')
+    expect(result1).toBe(true)
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1)
+
+    // Second call should use cache
+    const result2 = await isModuleEnabled('tenant-cache-test', 'agency')
+    expect(result2).toBe(true)
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1) // Still 1, not 2
+  })
+
+  it('does not cache across different tenants', async () => {
+    mockSupabase.from.mockReturnValue(mockSupabase)
+    mockSupabase.select.mockReturnValue(mockSupabase)
+    mockSupabase.eq.mockReturnValue(mockSupabase)
+    mockSupabase.maybeSingle.mockResolvedValue({
+      data: { enabled: true },
+      error: null,
+    })
+
+    // First call for tenant A
+    await isModuleEnabled('tenant-A', 'agency')
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1)
+
+    // Second call for tenant B should hit database
+    await isModuleEnabled('tenant-B', 'agency')
+    expect(mockSupabase.from).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not cache across different modules for same tenant', async () => {
+    mockSupabase.from.mockReturnValue(mockSupabase)
+    mockSupabase.select.mockReturnValue(mockSupabase)
+    mockSupabase.eq.mockReturnValue(mockSupabase)
+    mockSupabase.maybeSingle.mockResolvedValue({
+      data: { enabled: true },
+      error: null,
+    })
+
+    // First call for module A
+    await isModuleEnabled('tenant-X', 'agency')
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1)
+
+    // Second call for module B should hit database
+    await isModuleEnabled('tenant-X', 'billing')
+    expect(mockSupabase.from).toHaveBeenCalledTimes(2)
   })
 })

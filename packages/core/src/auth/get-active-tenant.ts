@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from './supabase-server'
 import type { Tenant, TenantRow } from './types'
 import { ACTIVE_TENANT_COOKIE } from './constants'
 import { transformTenantRow } from './transforms'
+import { logger } from '../utils/logger';
 
 /**
  * Get the active tenant from cookies
@@ -98,7 +99,7 @@ export async function getActiveTenant(userId?: string): Promise<Tenant | null> {
 
     return transformTenantRow(tenantRow as unknown as TenantRow)
   } catch (error) {
-    console.error('[getActiveTenant] Unexpected error:', error)
+    logger.error('getActiveTenant', 'Unexpected error', { error });
     return null
   }
 }

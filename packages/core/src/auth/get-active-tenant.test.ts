@@ -317,8 +317,8 @@ describe('getActiveTenant', () => {
 
       expect(result).toBeNull()
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getActiveTenant] Unexpected error:',
-        expect.any(Error)
+        '[getActiveTenant] Unexpected error',
+        { error: expect.any(Error) }
       )
 
       consoleErrorSpy.mockRestore()

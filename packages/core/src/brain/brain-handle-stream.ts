@@ -5,6 +5,7 @@ import { recordUsage } from '../ledger';
 import { validatePrompt } from './prompt-sanitizer';
 import { checkRateLimit } from './rate-limiter';
 import type { BrainTask } from './types';
+import { logger } from '../utils/logger';
 
 /**
  * Brain Units cost map per task type
@@ -196,7 +197,7 @@ export async function brainHandleStream<T extends z.ZodType>(
           metadata: { task: task.taskType },
         });
         if (!usageResult.success) {
-          console.error('[brainHandleStream] Failed to record usage:', usageResult.error);
+          logger.error('brainHandleStream', 'Failed to record usage', { error: usageResult.error });
         }
 
         // Yield final complete object
@@ -226,7 +227,7 @@ export async function brainHandleStream<T extends z.ZodType>(
           },
         });
         if (!errorUsageResult.success) {
-          console.error('[brainHandleStream] Failed to record usage:', errorUsageResult.error);
+          logger.error('brainHandleStream', 'Failed to record usage', { error: errorUsageResult.error });
         }
 
         throw error;

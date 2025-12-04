@@ -5,6 +5,8 @@
  * to reduce code duplication and improve maintainability.
  */
 
+import { logger } from '../../utils/logger';
+
 /**
  * Result type for generateStructured functions using discriminated union
  */
@@ -79,7 +81,7 @@ export function isRetryableError(error: unknown): boolean {
  */
 export function sanitizeErrorMessage(error: Error, adapterName: string): string {
   // Log full technical error internally for debugging
-  console.error(`[${adapterName}] Error:`, error.message)
+  logger.error(adapterName, 'Error', { message: error.message });
 
   // Return user-friendly message based on error type
   const msg = error.message.toLowerCase()

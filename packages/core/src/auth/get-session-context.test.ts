@@ -82,8 +82,8 @@ describe('getSessionContext', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles')
       expect(mockSupabase.eq).toHaveBeenCalledWith('id', userId)
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getSessionContext] Failed to fetch user profile:',
-        expect.any(Error)
+        '[getSessionContext] Failed to fetch user profile',
+        { error: expect.any(Error) }
       )
 
       consoleErrorSpy.mockRestore()
@@ -101,8 +101,8 @@ describe('getSessionContext', () => {
 
       expect(result).toBeNull()
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getSessionContext] Failed to fetch user profile:',
-        null
+        '[getSessionContext] Failed to fetch user profile',
+        { error: null }
       )
 
       consoleErrorSpy.mockRestore()
@@ -386,8 +386,8 @@ describe('getSessionContext', () => {
       })
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getSessionContext] Failed to fetch membership:',
-        expect.any(Error)
+        '[getSessionContext] Failed to fetch membership',
+        { error: expect.any(Error) }
       )
 
       consoleErrorSpy.mockRestore()
@@ -410,8 +410,8 @@ describe('getSessionContext', () => {
       }
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getSessionContext] Failed to fetch membership:',
-        null
+        '[getSessionContext] Failed to fetch membership',
+        { error: null }
       )
 
       consoleErrorSpy.mockRestore()
@@ -464,8 +464,8 @@ describe('getSessionContext', () => {
       })
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[getSessionContext] Failed to get active tenant:',
-        expect.any(Error)
+        '[getSessionContext] Failed to get active tenant',
+        { error: expect.any(Error) }
       )
 
       consoleErrorSpy.mockRestore()
