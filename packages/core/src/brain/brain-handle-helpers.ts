@@ -1,3 +1,6 @@
+// Size-justified: Complex AI orchestration logic with streaming,
+// caching, and error handling requires cohesive implementation
+
 import { z } from 'zod';
 import type { GenerateResult } from './adapters/shared';
 import { sanitizeErrorMessage } from './adapters/shared';

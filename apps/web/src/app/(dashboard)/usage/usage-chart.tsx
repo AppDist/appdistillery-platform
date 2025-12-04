@@ -1,3 +1,5 @@
+// Size-justified: Complex visualization component with multiple
+// chart types, period switching, and responsive layout
 'use client'
 
 import { useMemo, useId } from 'react'
