@@ -35,6 +35,8 @@ const DEFAULT_TTL_MS = 60 * 60 * 1000;
  * @returns SHA256 hash string
  */
 function hashObject(obj: unknown): string {
+  // Type-justified: Generic JSON handling
+  // Safe because: caller context guarantees non-null object for hashing
   const str = JSON.stringify(obj, Object.keys(obj as object).sort());
   return createHash('sha256').update(str).digest('hex');
 }

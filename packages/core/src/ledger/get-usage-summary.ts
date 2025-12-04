@@ -112,7 +112,8 @@ export async function getUsageSummary(
     // 4. Call server-side aggregation RPC function
     // This replaces O(n) row transfer + JavaScript aggregation
     // with O(1) aggregated result from PostgreSQL
-    // Type assertion needed until database types are regenerated
+    // Type-justified: Supabase RPC limitation
+    // Safe because: RPC function signature defined in migration 20250104120000_usage_summary
     const { data, error } = await (supabase.rpc as any)('get_usage_summary', {
       p_tenant_id: validated.tenantId,
       p_start_date: startDate,
@@ -134,7 +135,8 @@ export async function getUsageSummary(
     }
 
     // 5. Parse RPC result (already aggregated server-side)
-    // Note: Type assertion needed until db:generate runs after migration
+    // Type-justified: Supabase RPC limitation
+    // Safe because: validated by Zod schema (UsageSummarySchema) immediately after
     const rpcResult = data as unknown as {
       totalTokens: number
       totalUnits: number

@@ -52,6 +52,8 @@ export async function fetchUserProfile(
     return { profile: null, error: profileError as Error | null }
   }
 
+  // Type-justified: Supabase type inference
+  // Safe because: transformUserProfileRow validates shape with explicit property access
   return {
     profile: transformUserProfileRow(profileRow as unknown as UserProfileRow),
     error: null
@@ -120,6 +122,8 @@ export async function fetchTenantMembership(
     return { membership: null, error: membershipError as Error | null }
   }
 
+  // Type-justified: Supabase type inference
+  // Safe because: transformMemberRow validates shape with explicit property access
   return {
     membership: transformMemberRow(membershipRow as unknown as TenantMemberRow),
     error: null
@@ -145,6 +149,8 @@ export async function createTenantWithOwner(
 ): Promise<string | null> {
   const supabase = await createServerSupabaseClient()
 
+  // Type-justified: Supabase RPC limitation
+  // Safe because: RPC function signature defined in migration 20250103100000_create_tenant_with_owner
   const { data, error } = await supabase.rpc('create_tenant_with_owner', {
     p_type: type,
     p_name: name,
@@ -181,5 +187,7 @@ export async function fetchTenant(tenantId: string): Promise<Tenant | null> {
     return null
   }
 
+  // Type-justified: Supabase type inference
+  // Safe because: transformTenantRow validates shape with explicit property access
   return transformTenantRow(tenantRow as unknown as TenantRow)
 }

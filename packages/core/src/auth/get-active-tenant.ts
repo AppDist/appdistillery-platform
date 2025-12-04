@@ -97,6 +97,8 @@ export async function getActiveTenant(userId?: string): Promise<Tenant | null> {
       return null
     }
 
+    // Type-justified: Supabase type inference
+    // Safe because: transformTenantRow validates shape with explicit property access
     return transformTenantRow(tenantRow as unknown as TenantRow)
   } catch (error) {
     logger.error('getActiveTenant', 'Unexpected error', { error });

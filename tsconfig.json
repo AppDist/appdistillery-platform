@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "strict": true,
     "strictNullChecks": true,
+    "strictPropertyInitialization": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "declaration": true,
