@@ -38,6 +38,8 @@ The `@appdistillery/core` package exports four distinct services:
 - `updateSession()` - Middleware helper for session refresh
 - `getAuthErrorMessage()` - Sanitizes Supabase errors for display
 - `getSessionContext()` - Returns user/tenant/membership (real DB queries)
+- `getCachedSessionContext()` - Cached session context with 30s TTL (see ADR-008)
+- `invalidateSessionCache()` - Clear cache on tenant switch
 - `getUserTenants()` - Fetches all tenants for authenticated user
 
 **Subpath Exports:**
@@ -67,10 +69,41 @@ The `@appdistillery/core` package exports four distinct services:
 - RLS policy enforcement at database level
 
 ### 2. Brain (`@appdistillery/core/brain`)
-- AI router - single entry point for all LLM calls
-- `brainHandle(task, input)` - returns structured output
-- Uses Vercel AI SDK `generateObject()` with Zod schemas
-- Provider: Anthropic Claude (via @ai-sdk/anthropic)
+
+**Purpose:** AI router - single entry point for all LLM calls
+
+**Multi-Provider Support:**
+- Anthropic Claude (default, via @ai-sdk/anthropic)
+- OpenAI GPT (via @ai-sdk/openai)
+- Google Gemini (via @ai-sdk/google)
+
+**Core Exports:**
+- `brainHandle(task)` - Structured object generation with Zod schema
+- `brainHandleStream(task)` - Streaming text generation
+
+**Internal Modules:**
+```
+packages/core/src/brain/
+├── brain-handle.ts          # Main orchestrator (~80 lines)
+├── brain-handle-helpers.ts  # Helper functions (cache, validation, execution)
+├── brain-handle-stream.ts   # Streaming support
+├── cache.ts                 # Response caching with TTL
+├── rate-limiter.ts          # Rate limiting per tenant
+├── prompt-sanitizer.ts      # Prompt validation and sanitization
+├── types.ts                 # BrainTask, BrainResult types
+└── adapters/
+    ├── anthropic.ts         # Anthropic Claude adapter
+    ├── openai.ts            # OpenAI GPT adapter
+    ├── google.ts            # Google Gemini adapter
+    └── shared.ts            # Shared adapter utilities
+```
+
+**Features:**
+- Structured output via `generateObject()` with Zod schemas
+- Response caching with configurable TTL
+- Rate limiting per tenant
+- Prompt sanitization and validation
+- Multi-provider fallback support
 
 ### 3. Ledger (`@appdistillery/core/ledger`)
 
@@ -122,6 +155,56 @@ The `@appdistillery/core` package exports four distinct services:
 - Admin-only install/uninstall operations
 - Soft delete support (disable vs hard delete)
 - Module settings storage per tenant
+
+### 5. Utils (`@appdistillery/core/utils`)
+
+**Logging (ADR-006):**
+```typescript
+import { logger } from '@appdistillery/core'
+
+logger.error('brainHandle', 'Failed to record usage', { error })
+logger.warn('auth', 'Session expired', { userId })
+logger.info('modules', 'Module installed', { moduleId })
+logger.debug('cache', 'Cache hit', { key, ttl })
+```
+
+**Error Codes (ADR-007):**
+```typescript
+import { ErrorCodes, getErrorMessage, createErrorResult } from '@appdistillery/core'
+
+// Standardized error codes
+ErrorCodes.UNAUTHORIZED
+ErrorCodes.FORBIDDEN
+ErrorCodes.NOT_FOUND
+ErrorCodes.RATE_LIMIT_EXCEEDED
+ErrorCodes.INVALID_PROMPT
+ErrorCodes.AI_GENERATION_FAILED
+ErrorCodes.DATABASE_ERROR
+ErrorCodes.VALIDATION_ERROR
+
+// Get user-friendly message
+const message = getErrorMessage(ErrorCodes.RATE_LIMIT_EXCEEDED)
+// "You've exceeded the rate limit. Please try again later."
+
+// Create error result
+const result = createErrorResult(ErrorCodes.UNAUTHORIZED)
+// { success: false, error: "You are not authorized to perform this action." }
+```
+
+**Error Boundaries (Web App):**
+```typescript
+import { ErrorBoundary, ErrorFallback, DashboardErrorBoundary } from '@/components'
+
+// Reusable error boundary
+<ErrorBoundary fallback={<ErrorFallback />}>
+  {children}
+</ErrorBoundary>
+
+// Dashboard-specific error boundary
+<DashboardErrorBoundary>
+  {children}
+</DashboardErrorBoundary>
+```
 
 ## Module Structure Pattern
 

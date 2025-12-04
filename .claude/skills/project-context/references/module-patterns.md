@@ -114,18 +114,23 @@ Examples:
 
 ## Server Action Pattern
 
+**CRITICAL:** Use `getCachedSessionContext()` for better performance (see ADR-008).
+
 ```typescript
 'use server'
 
 import { brainHandle } from '@appdistillery/core/brain'
 import { recordUsage } from '@appdistillery/core/ledger'
-import { getSessionContext } from '@appdistillery/core/auth'
+import { getCachedSessionContext } from '@appdistillery/core/auth'
+import { logger, ErrorCodes, getErrorMessage, createErrorResult } from '@appdistillery/core'
 import { ScopeInputSchema, ScopeResultSchema } from '@/modules/agency/schemas'
 
 export async function generateScope(input: unknown) {
-  // 1. Get session context
-  const session = await getSessionContext()
-  if (!session) throw new Error('Unauthorized')
+  // 1. Get cached session context (30s TTL)
+  const session = await getCachedSessionContext()
+  if (!session) {
+    return createErrorResult(ErrorCodes.UNAUTHORIZED)
+  }
 
   // 2. Validate input
   const validated = ScopeInputSchema.parse(input)
@@ -137,7 +142,12 @@ export async function generateScope(input: unknown) {
     outputSchema: ScopeResultSchema,
   })
 
-  // 4. Record usage
+  if (!result.success) {
+    logger.error('generateScope', 'AI generation failed', { error: result.error })
+    return createErrorResult(ErrorCodes.AI_GENERATION_FAILED)
+  }
+
+  // 4. Record usage (brainHandle does this automatically, but shown for clarity)
   const usageResult = await recordUsage({
     action: 'agency:scope:generate',
     tenantId: session.tenant?.id,
@@ -150,7 +160,7 @@ export async function generateScope(input: unknown) {
   })
 
   if (!usageResult.success) {
-    console.error('Failed to record usage:', usageResult.error)
+    logger.error('generateScope', 'Failed to record usage', { error: usageResult.error })
   }
 
   // 5. Save to database with tenant_id and user_id
@@ -164,7 +174,7 @@ export async function generateScope(input: unknown) {
       scope: result.output,
     })
 
-  return result.output
+  return { success: true, data: result.output }
 }
 ```
 
@@ -407,6 +417,58 @@ modules/agency/
     "moduleResolution": "bundler"
   }
 }
+```
+
+## Logging Pattern
+
+**CRITICAL:** Use structured logging instead of `console.error`.
+
+```typescript
+import { logger } from '@appdistillery/core'
+
+// Context identifies the module/function
+logger.error('brainHandle', 'Failed to generate', { error, taskId })
+logger.warn('auth', 'Session near expiry', { userId, expiresAt })
+logger.info('modules', 'Module installed', { moduleId, tenantId })
+logger.debug('cache', 'Cache hit', { key, ttl })
+```
+
+**Format:** `[context] message { data }`
+
+**Levels:**
+- `error` - Operation failed, needs attention
+- `warn` - Degraded but continuing
+- `info` - Significant events
+- `debug` - Development/troubleshooting
+
+## Error Codes Pattern
+
+**CRITICAL:** Use standardized error codes for user-facing errors.
+
+```typescript
+import { ErrorCodes, getErrorMessage, createErrorResult } from '@appdistillery/core'
+
+// Available codes
+ErrorCodes.UNAUTHORIZED
+ErrorCodes.FORBIDDEN
+ErrorCodes.NOT_FOUND
+ErrorCodes.RATE_LIMIT_EXCEEDED
+ErrorCodes.INVALID_PROMPT
+ErrorCodes.AI_GENERATION_FAILED
+ErrorCodes.DATABASE_ERROR
+ErrorCodes.VALIDATION_ERROR
+
+// Get user-friendly message
+const message = getErrorMessage(ErrorCodes.RATE_LIMIT_EXCEEDED)
+// "You've exceeded the rate limit. Please try again later."
+
+// Create standardized error result
+return createErrorResult(ErrorCodes.UNAUTHORIZED)
+// { success: false, error: "You are not authorized to perform this action." }
+
+// With additional details
+return createErrorResult(ErrorCodes.VALIDATION_ERROR, 'Email format invalid')
+// { success: false, error: "The provided data is invalid. Email format invalid" }
 ```
 
 ## Anti-Patterns to Avoid

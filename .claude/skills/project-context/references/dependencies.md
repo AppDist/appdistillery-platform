@@ -18,6 +18,7 @@
 |---------|---------|---------|
 | turbo | ^2.5.0 | Monorepo build orchestration |
 | typescript | ^5.8.0 | Type checking |
+| knip | ^5.71.0 | Dead code detection |
 
 ## @appdistillery/web
 
@@ -31,8 +32,13 @@
 ### AI Integration
 | Package | Version | Purpose |
 |---------|---------|---------|
-| ai | ^4.3.0 | Vercel AI SDK |
+| ai | ^5.0.106 | Vercel AI SDK |
 | @ai-sdk/anthropic | ^1.2.0 | Anthropic Claude provider |
+
+### Monitoring
+| Package | Version | Purpose |
+|---------|---------|---------|
+| @sentry/nextjs | ^10.27.0 | Error tracking and monitoring |
 
 ### Database & Auth
 | Package | Version | Purpose |
@@ -72,14 +78,32 @@
 | @types/react | ^19.1.0 | React types |
 | @types/react-dom | ^19.1.0 | React DOM types |
 
+### Testing
+| Package | Version | Purpose |
+|---------|---------|---------|
+| @playwright/test | ^1.49.1 | E2E testing framework |
+| @testing-library/react | ^16.1.0 | React component testing |
+| @testing-library/user-event | ^14.5.2 | User interaction simulation |
+| vitest | ^4.0.14 | Testing framework |
+| @vitest/ui | ^4.0.14 | Vitest UI |
+| @vitest/coverage-v8 | ^4.0.14 | Coverage provider |
+| happy-dom | ^16.14.6 | DOM implementation for tests |
+
+### Bundle Analysis
+| Package | Version | Purpose |
+|---------|---------|---------|
+| @next/bundle-analyzer | ^15.1.5 | Next.js bundle analysis |
+
 ## @appdistillery/core
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| ai | ^4.3.0 | Vercel AI SDK |
-| @ai-sdk/anthropic | ^1.2.0 | Anthropic provider |
+| ai | ^5.0.106 | Vercel AI SDK |
+| @ai-sdk/anthropic | ^1.2.0 | Anthropic Claude provider |
+| @ai-sdk/openai | ^1.0.0 | OpenAI GPT provider |
+| @ai-sdk/google | ^2.0.44 | Google Gemini provider |
 | @supabase/supabase-js | ^2.49.0 | Supabase client |
-| @supabase/ssr | ^0.5.2 | SSR cookie handling for auth |
+| @supabase/ssr | ^0.6.0 | SSR cookie handling for auth |
 | @appdistillery/database | workspace:* | Database types for Supabase client |
 | next | ^15.1.5 | Next.js headers for server client |
 | zod | ^3.24.0 | Schema validation |
