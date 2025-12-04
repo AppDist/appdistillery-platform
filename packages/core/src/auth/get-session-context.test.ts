@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getSessionContext } from './index'
+import { invalidateAllSessions } from './session-cache'
 import type { UserProfileRow, TenantMemberRow } from './types'
 
 // Mock Supabase client
@@ -26,6 +27,7 @@ vi.mock('./get-active-tenant', () => ({
 describe('getSessionContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    invalidateAllSessions() // Clear cache before each test
   })
 
   describe('authentication', () => {
@@ -622,6 +624,7 @@ describe('getSessionContext', () => {
 
       for (const type of types) {
         vi.clearAllMocks()
+        invalidateAllSessions() // Clear cache for each iteration
 
         mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: { id: userId } },
@@ -663,6 +666,7 @@ describe('getSessionContext', () => {
   describe('edge cases', () => {
     beforeEach(() => {
       vi.clearAllMocks()
+      invalidateAllSessions() // Clear cache before each edge case test
     })
 
     it('handles null display_name in profile', async () => {

@@ -4,8 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Public routes that don't require authentication
 const publicRoutes = ['/login', '/signup', '/auth/callback']
 
-export async function middleware(request: NextRequest) {
-  const { supabaseResponse, user } = await updateSession(request)
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  // Type assertion to handle conflicting Next.js versions from Playwright
+  const { supabaseResponse, user } = await updateSession(request as any)
 
   const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
@@ -26,7 +27,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  return supabaseResponse as unknown as NextResponse
 }
 
 export const config = {

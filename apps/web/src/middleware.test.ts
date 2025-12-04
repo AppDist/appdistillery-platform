@@ -11,7 +11,8 @@ vi.mock('@appdistillery/core/auth', () => ({
 const { updateSession } = await import('@appdistillery/core/auth')
 
 describe('middleware', () => {
-  const mockSupabaseResponse = NextResponse.next()
+  // Use type assertion to handle conflicting Next.js versions from Playwright
+  const mockSupabaseResponse = NextResponse.next() as any
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -22,7 +23,7 @@ describe('middleware', () => {
       vi.mocked(updateSession).mockResolvedValue({
         supabaseResponse: mockSupabaseResponse,
         user: null,
-      })
+      } as any)
     })
 
     it('allows access to /login', async () => {
@@ -75,7 +76,7 @@ describe('middleware', () => {
       vi.mocked(updateSession).mockResolvedValue({
         supabaseResponse: mockSupabaseResponse,
         user: mockUser,
-      })
+      } as any)
     })
 
     it('allows access to protected routes', async () => {

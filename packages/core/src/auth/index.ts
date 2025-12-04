@@ -8,7 +8,8 @@ import type {
   TenantMember,
   TenantMemberRow,
 } from './types'
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger'
+import { getCachedSession, setCachedSession } from './session-cache'
 
 /**
  * Session context for authenticated requests
@@ -62,6 +63,12 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     return null
   }
 
+  // Check cache first
+  const cached = getCachedSession(userId)
+  if (cached) {
+    return cached
+  }
+
   // Fetch user profile from database
   const { profile: userProfile, error: profileError } = await fetchUserProfile(userId)
   if (!userProfile) {
@@ -76,11 +83,13 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
     // If no active tenant, user is working in personal mode
     if (!activeTenant) {
-      return {
+      const session = {
         user: userProfile,
         tenant: null,
         membership: null,
       }
+      setCachedSession(userId, session)
+      return session
     }
 
     // Fetch user's membership details for the active tenant
@@ -89,26 +98,32 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     if (!membership) {
       logger.error('getSessionContext', 'Failed to fetch membership', { error: membershipError });
       // Fallback to personal user mode if membership fetch fails
-      return {
+      const session = {
         user: userProfile,
         tenant: null,
         membership: null,
       }
+      setCachedSession(userId, session)
+      return session
     }
 
-    return {
+    const session = {
       user: userProfile,
       tenant: activeTenant,
       membership,
     }
+    setCachedSession(userId, session)
+    return session
   } catch (error) {
     logger.error('getSessionContext', 'Failed to get active tenant', { error });
     // Fallback to personal user mode if tenant fetch fails
-    return {
+    const session = {
       user: userProfile,
       tenant: null,
       membership: null,
     }
+    setCachedSession(userId, session)
+    return session
   }
 }
 
@@ -129,6 +144,9 @@ export { createHousehold, createOrganization } from './actions/create-tenant'
 
 // Export tenant switching actions
 export { switchTenant } from './actions/switch-tenant'
+
+// Export session cache utilities
+export { invalidateSession, invalidateAllSessions } from './session-cache'
 
 // Export tenant schemas
 export {

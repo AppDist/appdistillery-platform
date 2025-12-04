@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { TenantSwitcher } from '@/components/tenants/tenant-switcher'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { DashboardErrorBoundary } from '@/components/dashboard-error-boundary'
 
 export default async function DashboardLayout({
   children,
@@ -79,7 +80,7 @@ export default async function DashboardLayout({
 
       {/* Main Content */}
       <main id="main-content" tabIndex={-1}>
-        {children}
+        <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
       </main>
     </div>
   )

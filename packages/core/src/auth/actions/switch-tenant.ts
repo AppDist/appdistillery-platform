@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { createServerSupabaseClient } from '../supabase-server'
 import { ACTIVE_TENANT_COOKIE, COOKIE_MAX_AGE } from '../constants'
+import { invalidateSession } from '../session-cache'
 
 /**
  * Result type for tenant switching operations
@@ -79,6 +80,9 @@ export async function switchTenant(
         maxAge: COOKIE_MAX_AGE,
       })
 
+      // Invalidate session cache to ensure fresh data on next request
+      invalidateSession(user.id)
+
       return { success: true }
     }
 
@@ -106,6 +110,9 @@ export async function switchTenant(
       path: '/',
       maxAge: COOKIE_MAX_AGE,
     })
+
+    // Invalidate session cache to ensure fresh data on next request
+    invalidateSession(user.id)
 
     return { success: true }
   } catch (error) {
