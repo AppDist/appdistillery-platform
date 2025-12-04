@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { installModule } from './install-module'
 import type { SessionContext } from '../../auth'
+import { ErrorCodes } from '../../utils/error-codes'
 
 // Use vi.hoisted() for variables used in vi.mock() factory
 const mockGetSessionContext = vi.hoisted(() => vi.fn())
@@ -78,7 +79,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Unauthorized')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
       }
     })
 
@@ -94,7 +95,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('No active tenant')
+        expect(result.code).toBe(ErrorCodes.NO_ACTIVE_TENANT)
       }
     })
 
@@ -110,7 +111,8 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Forbidden: Admin access required')
+        expect(result.code).toBe(ErrorCodes.FORBIDDEN)
+        expect(result.error).toContain('Admin access required')
       }
     })
 
@@ -239,7 +241,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module not found')
+        expect(result.code).toBe(ErrorCodes.MODULE_NOT_FOUND)
       }
     })
 
@@ -255,7 +257,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module is not active')
+        expect(result.code).toBe(ErrorCodes.MODULE_NOT_ACTIVE)
       }
     })
 
@@ -271,7 +273,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module not found')
+        expect(result.code).toBe(ErrorCodes.MODULE_NOT_FOUND)
       }
     })
   })
@@ -294,7 +296,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module already installed')
+        expect(result.code).toBe(ErrorCodes.MODULE_ALREADY_INSTALLED)
       }
     })
 
@@ -358,7 +360,8 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Failed to re-enable module. Please try again.')
+        expect(result.code).toBe(ErrorCodes.MODULE_INSTALL_FAILED)
+        expect(result.error).toContain('re-enable module')
       }
     })
   })
@@ -486,7 +489,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Failed to install module. Please try again.')
+        expect(result.code).toBe(ErrorCodes.MODULE_INSTALL_FAILED)
       }
     })
   })
@@ -512,7 +515,7 @@ describe('installModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('An unexpected error occurred. Please try again.')
+        expect(result.code).toBe(ErrorCodes.INTERNAL_ERROR)
       }
     })
   })

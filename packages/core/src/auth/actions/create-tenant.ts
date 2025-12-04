@@ -13,6 +13,7 @@ import {
   createTenantWithOwner,
   fetchTenant
 } from '../helpers'
+import { ErrorCodes, createErrorResult, type ErrorCode } from '../../utils/error-codes'
 
 /**
  * Result type for tenant creation operations
@@ -20,7 +21,7 @@ import {
  */
 type CreateTenantResult =
   | { success: true; data: Tenant }
-  | { success: false; error: string }
+  | { success: false; error: string; code: ErrorCode }
 
 /**
  * Create a household tenant
@@ -54,31 +55,37 @@ export async function createHousehold(
 
     const userId = await getAuthenticatedUserId()
     if (!userId) {
-      return { success: false, error: 'Unauthorized: You must be logged in to create a household' }
+      return createErrorResult(ErrorCodes.UNAUTHORIZED)
     }
 
     const slugExists = await isSlugTaken(validated.slug)
     if (slugExists) {
-      return { success: false, error: `The slug "${validated.slug}" is already taken. Please choose a different one.` }
+      return createErrorResult(
+        ErrorCodes.SLUG_ALREADY_TAKEN,
+        `The slug "${validated.slug}" is already taken. Please choose a different one.`
+      )
     }
 
     const tenantId = await createTenantWithOwner('household', validated.name, validated.slug)
     if (!tenantId) {
-      return { success: false, error: 'Failed to create household. Please try again.' }
+      return createErrorResult(ErrorCodes.TENANT_CREATION_FAILED)
     }
 
     const tenant = await fetchTenant(tenantId)
     if (!tenant) {
-      return { success: false, error: 'Household created but failed to retrieve details.' }
+      return createErrorResult(
+        ErrorCodes.TENANT_NOT_FOUND,
+        'Household created but failed to retrieve details.'
+      )
     }
 
     return { success: true, data: tenant }
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {
-      return { success: false, error: error.message }
+      return createErrorResult(ErrorCodes.VALIDATION_ERROR, error.message)
     }
     console.error('[createHousehold] Unexpected error:', error)
-    return { success: false, error: 'An unexpected error occurred. Please try again.' }
+    return createErrorResult(ErrorCodes.INTERNAL_ERROR)
   }
 }
 
@@ -116,12 +123,15 @@ export async function createOrganization(
 
     const userId = await getAuthenticatedUserId()
     if (!userId) {
-      return { success: false, error: 'Unauthorized: You must be logged in to create an organization' }
+      return createErrorResult(ErrorCodes.UNAUTHORIZED)
     }
 
     const slugExists = await isSlugTaken(validated.slug)
     if (slugExists) {
-      return { success: false, error: `The slug "${validated.slug}" is already taken. Please choose a different one.` }
+      return createErrorResult(
+        ErrorCodes.SLUG_ALREADY_TAKEN,
+        `The slug "${validated.slug}" is already taken. Please choose a different one.`
+      )
     }
 
     const tenantId = await createTenantWithOwner(
@@ -132,20 +142,23 @@ export async function createOrganization(
       validated.billingEmail
     )
     if (!tenantId) {
-      return { success: false, error: 'Failed to create organization. Please try again.' }
+      return createErrorResult(ErrorCodes.TENANT_CREATION_FAILED)
     }
 
     const tenant = await fetchTenant(tenantId)
     if (!tenant) {
-      return { success: false, error: 'Organization created but failed to retrieve details.' }
+      return createErrorResult(
+        ErrorCodes.TENANT_NOT_FOUND,
+        'Organization created but failed to retrieve details.'
+      )
     }
 
     return { success: true, data: tenant }
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {
-      return { success: false, error: error.message }
+      return createErrorResult(ErrorCodes.VALIDATION_ERROR, error.message)
     }
     console.error('[createOrganization] Unexpected error:', error)
-    return { success: false, error: 'An unexpected error occurred. Please try again.' }
+    return createErrorResult(ErrorCodes.INTERNAL_ERROR)
   }
 }

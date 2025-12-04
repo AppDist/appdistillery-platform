@@ -65,6 +65,14 @@ export const ROUTES = {
   forgotPassword: '/forgot-password',
   dashboard: '/dashboard',
   settings: '/settings',
+  modules: '/settings/modules',
+  tenantsNew: '/tenants/new',
+  createTenant: '/settings/create-tenant',
+  usage: '/usage',
+  agency: '/agency',
+  agencyIntake: '/agency/intake',
+  agencyBriefs: '/agency/briefs',
+  agencyProposals: '/agency/proposals',
 } as const;
 
 /**

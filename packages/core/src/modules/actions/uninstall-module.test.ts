@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { uninstallModule } from './uninstall-module'
 import type { SessionContext } from '../../auth'
+import { ErrorCodes } from '../../utils/error-codes'
 
 // Use vi.hoisted() for variables used in vi.mock() factory
 const mockGetSessionContext = vi.hoisted(() => vi.fn())
@@ -77,7 +78,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Unauthorized')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
       }
     })
 
@@ -93,7 +94,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('No active tenant')
+        expect(result.code).toBe(ErrorCodes.NO_ACTIVE_TENANT)
       }
     })
 
@@ -109,7 +110,8 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Forbidden: Admin access required')
+        expect(result.code).toBe(ErrorCodes.FORBIDDEN)
+        expect(result.error).toContain('Admin access required')
       }
     })
 
@@ -204,7 +206,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module not installed')
+        expect(result.code).toBe(ErrorCodes.MODULE_NOT_INSTALLED)
       }
     })
 
@@ -220,7 +222,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module not installed')
+        expect(result.code).toBe(ErrorCodes.MODULE_NOT_INSTALLED)
       }
     })
   })
@@ -264,7 +266,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Module already disabled')
+        expect(result.code).toBe(ErrorCodes.MODULE_ALREADY_DISABLED)
       }
 
       // Should not call update
@@ -294,7 +296,8 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Failed to disable module. Please try again.')
+        expect(result.code).toBe(ErrorCodes.MODULE_UNINSTALL_FAILED)
+        expect(result.error).toContain('disable module')
       }
     })
 
@@ -380,7 +383,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('Failed to uninstall module. Please try again.')
+        expect(result.code).toBe(ErrorCodes.MODULE_UNINSTALL_FAILED)
       }
     })
   })
@@ -428,7 +431,7 @@ describe('uninstallModule', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toBe('An unexpected error occurred. Please try again.')
+        expect(result.code).toBe(ErrorCodes.INTERNAL_ERROR)
       }
     })
   })

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createHousehold, createOrganization } from './create-tenant'
 import type { TenantRow } from '../types'
+import { ErrorCodes } from '../../utils/error-codes'
 
 // Mock the createServerSupabaseClient module
 vi.mock('../supabase-server', () => ({
@@ -44,8 +45,8 @@ describe('createHousehold', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Unauthorized')
-        expect(result.error).toContain('logged in')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
+        expect(result.error).toBeTruthy()
       }
     })
 
@@ -62,7 +63,7 @@ describe('createHousehold', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Unauthorized')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
       }
     })
   })
@@ -213,6 +214,7 @@ describe('createHousehold', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
+        expect(result.code).toBe(ErrorCodes.SLUG_ALREADY_TAKEN)
         expect(result.error).toContain('smith-family')
         expect(result.error).toContain('already taken')
       }
@@ -369,7 +371,7 @@ describe('createHousehold', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Failed to create household')
+        expect(result.code).toBe(ErrorCodes.TENANT_CREATION_FAILED)
       }
     })
 
@@ -390,6 +392,7 @@ describe('createHousehold', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
+        expect(result.code).toBe(ErrorCodes.TENANT_NOT_FOUND)
         expect(result.error).toContain('created but failed to retrieve')
       }
     })
@@ -430,8 +433,8 @@ describe('createOrganization', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Unauthorized')
-        expect(result.error).toContain('logged in')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
+        expect(result.error).toBeTruthy()
       }
     })
 
@@ -448,7 +451,7 @@ describe('createOrganization', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Unauthorized')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
       }
     })
   })
@@ -706,6 +709,7 @@ describe('createOrganization', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
+        expect(result.code).toBe(ErrorCodes.SLUG_ALREADY_TAKEN)
         expect(result.error).toContain('acme-corp')
         expect(result.error).toContain('already taken')
       }
@@ -865,7 +869,7 @@ describe('createOrganization', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Failed to create organization')
+        expect(result.code).toBe(ErrorCodes.TENANT_CREATION_FAILED)
       }
     })
 
@@ -886,6 +890,7 @@ describe('createOrganization', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
+        expect(result.code).toBe(ErrorCodes.TENANT_NOT_FOUND)
         expect(result.error).toContain('created but failed to retrieve')
       }
     })

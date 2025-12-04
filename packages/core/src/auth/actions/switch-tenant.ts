@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createServerSupabaseClient } from '../supabase-server'
 import { ACTIVE_TENANT_COOKIE, COOKIE_MAX_AGE } from '../constants'
 import { invalidateSession } from '../session-cache'
+import { ErrorCodes, createErrorResult, type ErrorCode } from '../../utils/error-codes'
 
 /**
  * Result type for tenant switching operations
@@ -12,7 +13,7 @@ import { invalidateSession } from '../session-cache'
  */
 type SwitchTenantResult =
   | { success: true }
-  | { success: false; error: string }
+  | { success: false; error: string; code: ErrorCode }
 
 /**
  * Schema for validating switch tenant input
@@ -63,10 +64,7 @@ export async function switchTenant(
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return {
-        success: false,
-        error: 'Unauthorized: You must be logged in to switch tenants',
-      }
+      return createErrorResult(ErrorCodes.UNAUTHORIZED)
     }
 
     // 3. If switching to personal mode (null), just clear/set empty cookie
@@ -95,10 +93,7 @@ export async function switchTenant(
       .single()
 
     if (membershipError || !membership) {
-      return {
-        success: false,
-        error: 'You are not a member of this tenant',
-      }
+      return createErrorResult(ErrorCodes.NOT_TENANT_MEMBER)
     }
 
     // 5. Set active tenant cookie
@@ -118,17 +113,14 @@ export async function switchTenant(
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: 'Invalid input: tenantId must be a valid UUID or null',
-      }
+      return createErrorResult(
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid input: tenantId must be a valid UUID or null'
+      )
     }
 
     // Handle unexpected errors
     console.error('[switchTenant] Unexpected error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
+    return createErrorResult(ErrorCodes.INTERNAL_ERROR)
   }
 }

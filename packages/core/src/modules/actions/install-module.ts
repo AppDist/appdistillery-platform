@@ -6,7 +6,8 @@ import { getSessionContext } from '../../auth'
 import { InstallModuleSchema } from '../schemas'
 import { invalidateModuleCache } from '../is-module-enabled'
 import type { Database, Json } from '@appdistillery/database'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { ErrorCodes, createErrorResult, type ErrorCode } from '../../utils/error-codes'
 
 type ModuleRow = Database['public']['Tables']['modules']['Row']
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
@@ -19,7 +20,7 @@ export type { InstallModuleInput } from '../schemas'
  */
 export type InstallModuleResult =
   | { success: true; data: { id: string; moduleId: string } }
-  | { success: false; error: string }
+  | { success: false; error: string; code: ErrorCode }
 
 /**
  * Install a module for the active tenant
@@ -59,16 +60,16 @@ export async function installModule(
     // 1. Validate authentication and get session context
     const session = await getSessionContext()
     if (!session) {
-      return { success: false, error: 'Unauthorized' }
+      return createErrorResult(ErrorCodes.UNAUTHORIZED)
     }
 
     if (!session.tenant) {
-      return { success: false, error: 'No active tenant' }
+      return createErrorResult(ErrorCodes.NO_ACTIVE_TENANT)
     }
 
     // Verify user has admin privileges
     if (!session.membership || !['owner', 'admin'].includes(session.membership.role)) {
-      return { success: false, error: 'Forbidden: Admin access required' }
+      return createErrorResult(ErrorCodes.FORBIDDEN, 'Admin access required')
     }
 
     // 2. Validate input with Zod
@@ -84,11 +85,11 @@ export async function installModule(
       .maybeSingle<Pick<ModuleRow, 'id' | 'is_active'>>()
 
     if (moduleError || !module) {
-      return { success: false, error: 'Module not found' }
+      return createErrorResult(ErrorCodes.MODULE_NOT_FOUND)
     }
 
     if (!module.is_active) {
-      return { success: false, error: 'Module is not active' }
+      return createErrorResult(ErrorCodes.MODULE_NOT_ACTIVE)
     }
 
     // 4. Check if module is already installed
@@ -115,10 +116,7 @@ export async function installModule(
 
         if (updateError) {
           logger.error('installModule', 'Database error', { error: updateError });
-          return {
-            success: false,
-            error: 'Failed to re-enable module. Please try again.',
-          }
+          return createErrorResult(ErrorCodes.MODULE_INSTALL_FAILED, 'Failed to re-enable module')
         }
 
         // Invalidate cache after re-enabling
@@ -130,7 +128,7 @@ export async function installModule(
         }
       }
 
-      return { success: false, error: 'Module already installed' }
+      return createErrorResult(ErrorCodes.MODULE_ALREADY_INSTALLED)
     }
 
     // 5. Install module (create tenant_modules record)
@@ -149,10 +147,7 @@ export async function installModule(
 
     if (installError || !installed) {
       logger.error('installModule', 'Database error', { error: installError });
-      return {
-        success: false,
-        error: 'Failed to install module. Please try again.',
-      }
+      return createErrorResult(ErrorCodes.MODULE_INSTALL_FAILED)
     }
 
     // Invalidate cache after successful install
@@ -165,17 +160,14 @@ export async function installModule(
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: error.errors.map((e) => e.message).join(', '),
-      }
+      return createErrorResult(
+        ErrorCodes.VALIDATION_ERROR,
+        error.errors.map((e) => e.message).join(', ')
+      )
     }
 
     // Handle unexpected errors
     logger.error('installModule', 'Unexpected error', { error });
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
+    return createErrorResult(ErrorCodes.INTERNAL_ERROR)
   }
 }

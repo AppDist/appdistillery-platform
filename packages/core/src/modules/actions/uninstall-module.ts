@@ -6,7 +6,8 @@ import { getSessionContext } from '../../auth'
 import { UninstallModuleSchema } from '../schemas'
 import { invalidateModuleCache } from '../is-module-enabled'
 import type { Database } from '@appdistillery/database'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
+import { ErrorCodes, createErrorResult, type ErrorCode } from '../../utils/error-codes'
 
 type TenantModuleRow = Database['public']['Tables']['tenant_modules']['Row']
 
@@ -18,7 +19,7 @@ export type { UninstallModuleInput } from '../schemas'
  */
 export type UninstallModuleResult =
   | { success: true; data: { moduleId: string; hardDeleted: boolean } }
-  | { success: false; error: string }
+  | { success: false; error: string; code: ErrorCode }
 
 /**
  * Uninstall a module for the active tenant
@@ -67,16 +68,16 @@ export async function uninstallModule(
     // 1. Validate authentication and get session context
     const session = await getSessionContext()
     if (!session) {
-      return { success: false, error: 'Unauthorized' }
+      return createErrorResult(ErrorCodes.UNAUTHORIZED)
     }
 
     if (!session.tenant) {
-      return { success: false, error: 'No active tenant' }
+      return createErrorResult(ErrorCodes.NO_ACTIVE_TENANT)
     }
 
     // Verify user has admin privileges
     if (!session.membership || !['owner', 'admin'].includes(session.membership.role)) {
-      return { success: false, error: 'Forbidden: Admin access required' }
+      return createErrorResult(ErrorCodes.FORBIDDEN, 'Admin access required')
     }
 
     // 2. Validate input with Zod
@@ -93,13 +94,13 @@ export async function uninstallModule(
       .maybeSingle<Pick<TenantModuleRow, 'id' | 'enabled'>>()
 
     if (existingError || !existing) {
-      return { success: false, error: 'Module not installed' }
+      return createErrorResult(ErrorCodes.MODULE_NOT_INSTALLED)
     }
 
     // 4a. Soft delete: disable module but keep data
     if (!validated.hardDelete) {
       if (!existing.enabled) {
-        return { success: false, error: 'Module already disabled' }
+        return createErrorResult(ErrorCodes.MODULE_ALREADY_DISABLED)
       }
 
       // Supabase RLS inference limitation: type assertion needed for update operations
@@ -114,10 +115,7 @@ export async function uninstallModule(
 
       if (updateError) {
         logger.error('uninstallModule', 'Database error', { error: updateError });
-        return {
-          success: false,
-          error: 'Failed to disable module. Please try again.',
-        }
+        return createErrorResult(ErrorCodes.MODULE_UNINSTALL_FAILED, 'Failed to disable module')
       }
 
       // Invalidate cache after disabling
@@ -137,10 +135,7 @@ export async function uninstallModule(
 
     if (deleteError) {
       logger.error('uninstallModule', 'Database error', { error: deleteError });
-      return {
-        success: false,
-        error: 'Failed to uninstall module. Please try again.',
-      }
+      return createErrorResult(ErrorCodes.MODULE_UNINSTALL_FAILED)
     }
 
     // Invalidate cache after hard delete
@@ -153,17 +148,14 @@ export async function uninstallModule(
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        error: error.errors.map((e) => e.message).join(', '),
-      }
+      return createErrorResult(
+        ErrorCodes.VALIDATION_ERROR,
+        error.errors.map((e) => e.message).join(', ')
+      )
     }
 
     // Handle unexpected errors
     logger.error('uninstallModule', 'Unexpected error', { error });
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
+    return createErrorResult(ErrorCodes.INTERNAL_ERROR)
   }
 }

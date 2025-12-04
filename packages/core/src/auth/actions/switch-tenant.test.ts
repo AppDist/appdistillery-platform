@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { switchTenant } from './switch-tenant'
+import { ErrorCodes } from '../../utils/error-codes'
 
 // Mock next/headers
 vi.mock('next/headers', () => ({
@@ -42,7 +43,7 @@ describe('switchTenant', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error).toContain('Unauthorized')
+        expect(result.code).toBe(ErrorCodes.UNAUTHORIZED)
       }
     })
   })
