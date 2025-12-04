@@ -6,11 +6,29 @@ Verify features are integrated before marking complete.
 
 - [ ] Feature has at least one caller in production code
 - [ ] Integration is tested (not just the utility)
-- [ ] No orphan exports
+- [ ] No orphan exports (verified by knip)
+- [ ] TypeScript compiles cleanly
 
 ## Verification Commands
 
-### Check Feature Usage
+### Preferred: Use knip for Dead Code Detection
+
+```bash
+# Run knip to find unused exports, files, and dependencies
+pnpm knip
+
+# Run with auto-fix suggestions
+pnpm knip --fix
+```
+
+knip catches:
+- Unused exports
+- Unused files
+- Unused dependencies
+- Unused devDependencies
+- Unlisted binaries
+
+### Quick Check: Grep (for single function)
 
 ```bash
 # Find all usages of a function
@@ -20,7 +38,7 @@ grep -r "validatePrompt" --include="*.ts" | grep -v test | grep -v ".d.ts"
 # If empty = orphan utility = not integrated
 ```
 
-### Check Orphan Exports
+### Check Orphan Exports (manual)
 
 ```bash
 # List exports from a file

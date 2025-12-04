@@ -7,6 +7,17 @@ description: Enforce focused, minimal, integrated implementations. Use when writ
 
 Keep implementations focused, minimal, and integrated.
 
+## Scope
+
+**Applies to:** TypeScript application/library code in `packages/`, `modules/`, `apps/`
+
+**Excludes (no size limits):**
+- SQL migrations (`packages/database/supabase/migrations/`)
+- Generated types (`database.types.ts`, `*.generated.ts`)
+- Storybook stories (`*.stories.tsx`)
+- Config aggregates (`index.ts` re-exports)
+- Test fixtures and mock data files
+
 ## Quick Reference
 
 **Size Limits:**
@@ -14,10 +25,16 @@ Keep implementations focused, minimal, and integrated.
 - Files: max 300 lines (implementation), 500 lines (tests)
 - Task output: target 100-200 lines, max 400 lines
 
+**Escape Hatch:** When exceeding limits is justified, add a comment:
+```typescript
+// Size-justified: Complex state machine requires sequential steps
+export function complexStateMachine() { /* 80 lines */ }
+```
+
 **Core Rules:**
 - Every feature MUST be integrated in the same task
 - No example files - use JSDoc `@example`
-- No premature abstraction - wait for 3+ usages
+- No premature abstraction - wait for 3+ usages (unless ADR-mandated)
 
 ## Integration Requirement
 
@@ -25,13 +42,25 @@ Keep implementations focused, minimal, and integrated.
 
 ```
 BAD:  Create utility → mark done → "integrate later"
-GOOD: Create utility → integrate → verify with grep → mark done
+GOOD: Create utility → integrate → verify → mark done
 ```
+
+### Staged Work Exception
+
+For cross-package or infrastructure changes, staged work is acceptable IF:
+1. A minimal real caller exists (or integration harness test)
+2. A follow-up issue is linked in the same PR
+3. The follow-up has a clear next integration point
 
 ### Pre-Completion Verification
 
+Use `knip` (preferred) or grep to verify no orphan exports:
+
 ```bash
-# Verify feature is used in production code
+# Preferred: Run knip for dead code detection
+pnpm knip
+
+# Quick check: Verify feature is used in production code
 grep -r "functionName" --include="*.ts" | grep -v test | grep -v ".d.ts"
 
 # If no results = orphan utility = task not complete
@@ -45,6 +74,15 @@ grep -r "functionName" --include="*.ts" | grep -v test | grep -v ".d.ts"
 | Abstract for 1 use case | Wait for 3+ usages |
 | Build "future" features | Build what's needed now |
 | Create verbose tests | Test behavior, not implementation |
+| Assert internal call order | Test public API and outcomes |
+| Hard-code without escape hatch | Add `// Size-justified:` when needed |
+
+### Abstraction Exceptions
+
+Earlier abstraction (before 3 usages) is allowed when:
+- **ADR-mandated**: Pattern is documented in `docs/decisions/` (e.g., AI adapter pattern)
+- **Boundary enforcement**: Abstraction enforces module boundaries across packages
+- **Framework requirement**: Next.js/React patterns require specific structure
 
 ### Example File Anti-Pattern
 

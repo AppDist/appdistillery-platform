@@ -56,6 +56,41 @@ const config = [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
       'no-var': 'error',
+
+      // Simplicity: Size limits
+      'max-lines': [
+        'warn',
+        {
+          max: 300,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+      'max-lines-per-function': [
+        'warn',
+        {
+          max: 60,
+          skipBlankLines: true,
+          skipComments: true,
+          IIFEs: true,
+        },
+      ],
+    },
+  },
+
+  // Overrides for files that can be larger
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
+    rules: {
+      'max-lines': ['warn', { max: 500, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': 'off',
+    },
+  },
+  {
+    files: ['**/components/ui/**/*.tsx'],
+    rules: {
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
     },
   },
 ];

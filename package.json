@@ -8,11 +8,15 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
+    "knip": "knip",
+    "knip:fix": "knip --fix",
+    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm test",
     "clean": "turbo clean && rm -rf node_modules",
     "db:generate": "supabase gen types typescript --local > packages/database/src/types.ts",
     "db:reset": "supabase db reset"
   },
   "devDependencies": {
+    "knip": "^5.71.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   },

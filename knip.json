@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "ignore": ["**/*"]
+    },
+    "apps/web": {
+      "entry": [
+        "src/app/**/page.tsx",
+        "src/app/**/layout.tsx",
+        "src/app/**/*actions*.ts",
+        "src/middleware.ts",
+        "next.config.ts",
+        "postcss.config.mjs"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": [
+        "src/components/ui/**",
+        "src/lib/**"
+      ],
+      "next": true
+    },
+    "packages/core": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": [
+        "src/**/*.test.ts",
+        "src/**/*.d.ts",
+        "src/__tests__/**"
+      ]
+    },
+    "packages/database": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/database.types.ts", "src/types.ts"]
+    },
+    "packages/ui": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/**/*.stories.tsx"]
+    },
+    "modules/agency": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/**/*.test.ts"]
+    }
+  },
+  "ignoreExportsUsedInFile": true
+}
