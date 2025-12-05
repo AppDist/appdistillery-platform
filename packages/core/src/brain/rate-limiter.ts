@@ -47,12 +47,13 @@ const rateLimitStore = new Map<string, RateLimitEntry>();
  * Check if a request should be rate limited
  *
  * @param tenantId - Tenant ID (null for personal users)
+ * @param userId - User ID (fallback when tenantId is null)
  * @param config - Optional rate limit configuration
  * @returns Rate limit result with allowed status and retry info
  *
  * @example
  * ```typescript
- * const result = checkRateLimit('tenant-123');
+ * const result = checkRateLimit('tenant-123', 'user-456');
  * if (!result.allowed) {
  *   throw new Error(`Rate limit exceeded. Try again in ${result.retryAfter}s`);
  * }
@@ -60,19 +61,23 @@ const rateLimitStore = new Map<string, RateLimitEntry>();
  */
 export function checkRateLimit(
   tenantId: string | null | undefined,
+  userId?: string | null,
   config: RateLimitConfig = DEFAULT_CONFIG
 ): RateLimitResult {
-  // No rate limiting for missing tenant (allows testing)
-  if (!tenantId) {
+  // Use tenantId if available, otherwise userId for rate limiting
+  const rateLimitKey = tenantId ?? userId;
+
+  // No rate limiting only if BOTH tenant and user are missing (allows testing)
+  if (!rateLimitKey) {
     return { allowed: true };
   }
 
   const now = Date.now();
-  const entry = rateLimitStore.get(tenantId);
+  const entry = rateLimitStore.get(rateLimitKey);
 
   // First request or window expired - allow and create entry
   if (!entry || now - entry.windowStart >= config.windowMs) {
-    rateLimitStore.set(tenantId, {
+    rateLimitStore.set(rateLimitKey, {
       count: 1,
       windowStart: now,
     });

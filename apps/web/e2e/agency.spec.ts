@@ -217,13 +217,13 @@ test.describe('Agency Module', () => {
       }
     });
 
-    test.skip('shows lead status and metadata', async ({ page }) => {
+    test.skip('shows lead status and metadata', async ({ _page }) => {
       // TODO: This test requires authentication with existing lead
       // Navigate to a lead details page
       // Verify status, created date, and other metadata are displayed
     });
 
-    test.skip('can generate brief from lead', async ({ page }) => {
+    test.skip('can generate brief from lead', async ({ _page }) => {
       // TODO: This test requires authentication with existing lead
       // From lead details, should be able to trigger brief generation
       // This may involve AI processing, so timeout may need adjustment
@@ -315,7 +315,7 @@ test.describe('Agency Module', () => {
       }
     });
 
-    test.skip('can generate proposal from brief', async ({ page }) => {
+    test.skip('can generate proposal from brief', async ({ _page }) => {
       // TODO: This test requires authentication with existing brief
       // Navigate to brief details
       // Click "Generate Proposal" button
@@ -347,19 +347,19 @@ test.describe('Agency Module', () => {
   });
 
   test.describe('AI Generation Flows', () => {
-    test.skip('shows AI generation loading state', async ({ page }) => {
+    test.skip('shows AI generation loading state', async ({ _page }) => {
       // TODO: This test requires authentication and triggering AI generation
       // When generating brief or proposal, should show loading indicator
       // May need to mock or handle long generation times
     });
 
-    test.skip('handles AI generation errors gracefully', async ({ page }) => {
+    test.skip('handles AI generation errors gracefully', async ({ _page }) => {
       // TODO: This test requires authentication and simulating AI error
       // Should show error message if AI generation fails
       // User should be able to retry
     });
 
-    test.skip('displays token usage after AI generation', async ({ page }) => {
+    test.skip('displays token usage after AI generation', async ({ _page }) => {
       // TODO: This test requires authentication and completed AI generation
       // Should show token count or brain units used
     });

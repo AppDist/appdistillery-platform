@@ -39,9 +39,9 @@ describe('Rate Limiter', () => {
     it('allows requests under limit', () => {
       const config: RateLimitConfig = { maxRequests: 3, windowMs: 60000 };
 
-      const result1 = checkRateLimit('tenant-123', config);
-      const result2 = checkRateLimit('tenant-123', config);
-      const result3 = checkRateLimit('tenant-123', config);
+      const result1 = checkRateLimit('tenant-123', null, config);
+      const result2 = checkRateLimit('tenant-123', null, config);
+      const result3 = checkRateLimit('tenant-123', null, config);
 
       expect(result1.allowed).toBe(true);
       expect(result1.currentCount).toBe(1);
@@ -54,9 +54,9 @@ describe('Rate Limiter', () => {
     it('blocks requests over limit', () => {
       const config: RateLimitConfig = { maxRequests: 2, windowMs: 60000 };
 
-      checkRateLimit('tenant-123', config); // 1
-      checkRateLimit('tenant-123', config); // 2
-      const result = checkRateLimit('tenant-123', config); // Over limit
+      checkRateLimit('tenant-123', null, config); // 1
+      checkRateLimit('tenant-123', null, config); // 2
+      const result = checkRateLimit('tenant-123', null, config); // Over limit
 
       expect(result.allowed).toBe(false);
       expect(result.retryAfter).toBeGreaterThan(0);
@@ -69,16 +69,16 @@ describe('Rate Limiter', () => {
       const config: RateLimitConfig = { maxRequests: 2, windowMs: 1000 };
 
       // Fill up limit
-      checkRateLimit('tenant-123', config);
-      checkRateLimit('tenant-123', config);
-      let result = checkRateLimit('tenant-123', config);
+      checkRateLimit('tenant-123', null, config);
+      checkRateLimit('tenant-123', null, config);
+      let result = checkRateLimit('tenant-123', null, config);
       expect(result.allowed).toBe(false);
 
       // Advance time past window
       vi.advanceTimersByTime(1001);
 
       // Should allow new requests
-      result = checkRateLimit('tenant-123', config);
+      result = checkRateLimit('tenant-123', null, config);
       expect(result.allowed).toBe(true);
       expect(result.currentCount).toBe(1);
 
@@ -88,13 +88,46 @@ describe('Rate Limiter', () => {
     it('isolates rate limits by tenant', () => {
       const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
 
-      const result1 = checkRateLimit('tenant-A', config);
-      const result2 = checkRateLimit('tenant-B', config);
-      const result3 = checkRateLimit('tenant-A', config);
+      const result1 = checkRateLimit('tenant-A', null, config);
+      const result2 = checkRateLimit('tenant-B', null, config);
+      const result3 = checkRateLimit('tenant-A', null, config);
 
       expect(result1.allowed).toBe(true); // tenant-A first request
       expect(result2.allowed).toBe(true); // tenant-B first request
       expect(result3.allowed).toBe(false); // tenant-A over limit
+    });
+
+    it('rate limits by userId when tenantId is null', () => {
+      const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
+
+      const result1 = checkRateLimit(null, 'user-123', config);
+      const result2 = checkRateLimit(null, 'user-123', config);
+
+      expect(result1.allowed).toBe(true);
+      expect(result2.allowed).toBe(false);
+    });
+
+    it('prefers tenantId over userId for rate limiting', () => {
+      const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
+
+      // Same user, different tenants - should be separate rate limits
+      const result1 = checkRateLimit('tenant-A', 'user-123', config);
+      const result2 = checkRateLimit('tenant-B', 'user-123', config);
+
+      expect(result1.allowed).toBe(true);
+      expect(result2.allowed).toBe(true); // Different tenant = different limit
+    });
+
+    it('only bypasses rate limit when both tenantId and userId are null', () => {
+      // Both null - bypass
+      const result1 = checkRateLimit(null, null);
+      expect(result1.allowed).toBe(true);
+
+      // Only tenantId null, userId present - enforce
+      const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
+      checkRateLimit(null, 'user-456', config);
+      const result2 = checkRateLimit(null, 'user-456', config);
+      expect(result2.allowed).toBe(false);
     });
   });
 
@@ -102,13 +135,13 @@ describe('Rate Limiter', () => {
     it('clears rate limit for specific tenant', () => {
       const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
 
-      checkRateLimit('tenant-123', config);
-      const result1 = checkRateLimit('tenant-123', config);
+      checkRateLimit('tenant-123', null, config);
+      const result1 = checkRateLimit('tenant-123', null, config);
       expect(result1.allowed).toBe(false);
 
       clearRateLimit('tenant-123');
 
-      const result2 = checkRateLimit('tenant-123', config);
+      const result2 = checkRateLimit('tenant-123', null, config);
       expect(result2.allowed).toBe(true);
     });
   });
@@ -117,15 +150,15 @@ describe('Rate Limiter', () => {
     it('clears all rate limits', () => {
       const config: RateLimitConfig = { maxRequests: 1, windowMs: 60000 };
 
-      checkRateLimit('tenant-A', config);
-      checkRateLimit('tenant-B', config);
-      checkRateLimit('tenant-A', config);
-      checkRateLimit('tenant-B', config);
+      checkRateLimit('tenant-A', null, config);
+      checkRateLimit('tenant-B', null, config);
+      checkRateLimit('tenant-A', null, config);
+      checkRateLimit('tenant-B', null, config);
 
       clearAllRateLimits();
 
-      const resultA = checkRateLimit('tenant-A', config);
-      const resultB = checkRateLimit('tenant-B', config);
+      const resultA = checkRateLimit('tenant-A', null, config);
+      const resultB = checkRateLimit('tenant-B', null, config);
       expect(resultA.allowed).toBe(true);
       expect(resultB.allowed).toBe(true);
     });
@@ -141,8 +174,8 @@ describe('Rate Limiter', () => {
     it('returns status for existing tenant', () => {
       const config: RateLimitConfig = { maxRequests: 5, windowMs: 60000 };
 
-      checkRateLimit('tenant-123', config);
-      checkRateLimit('tenant-123', config);
+      checkRateLimit('tenant-123', null, config);
+      checkRateLimit('tenant-123', null, config);
 
       const status = getRateLimitStatus('tenant-123');
 

@@ -56,7 +56,7 @@ import { describe, it, expect } from 'vitest';
 import { createLead } from '../actions/leads';
 
 describe('createLead', () => {
-  it('creates lead with org_id isolation', async () => {
+  it('creates lead with tenant_id isolation', async () => {
     const result = await createLead({ /* ... */ });
     expect(result.success).toBe(true);
   });

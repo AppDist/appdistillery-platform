@@ -162,7 +162,7 @@ test.describe('Tenant Management', () => {
 
       // Should show "Switching..." briefly
       // Note: This may be too fast to catch reliably
-      const switchingText = page.getByText(/switching/i);
+      const _switchingText = page.getByText(/switching/i);
       // Just verify switcher exists during transition
       await expect(switcher).toBeVisible();
     });

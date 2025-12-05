@@ -134,10 +134,10 @@ export function checkRateLimitError<T>(
   task: BrainTask<z.ZodType>,
   startTime: number
 ): BrainResult<T> | null {
-  const rateLimitResult = checkRateLimit(task.tenantId);
+  const rateLimitResult = checkRateLimit(task.tenantId, task.userId);
   if (!rateLimitResult.allowed) {
     const durationMs = Date.now() - startTime;
-    console.warn('[brainHandle] Rate limit exceeded:', {
+    logger.warn('brainHandle', 'Rate limit exceeded', {
       tenantId: task.tenantId,
       retryAfter: rateLimitResult.retryAfter,
     });
@@ -189,7 +189,7 @@ export function validateBrainTask<T>(
   const promptValidation = validatePrompt(task.userPrompt);
   if (!promptValidation.valid) {
     const durationMs = Date.now() - startTime;
-    console.warn('[brainHandle] Prompt validation failed:', promptValidation.errors);
+    logger.warn('brainHandle', 'Prompt validation failed', { errors: promptValidation.errors });
 
     const technicalError = promptValidation.errors[0] ?? 'Invalid prompt';
     let userFriendlyError = 'Unable to process your request. Please try again.';
@@ -212,7 +212,7 @@ export function validateBrainTask<T>(
 
   // Log warnings for potential injection patterns (don't block)
   if (promptValidation.warnings.length > 0) {
-    console.warn('[brainHandle] Prompt warnings:', promptValidation.warnings);
+    logger.warn('brainHandle', 'Prompt warnings', { warnings: promptValidation.warnings });
   }
 
   // Derive action from task type

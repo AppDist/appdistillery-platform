@@ -60,17 +60,19 @@ export async function myAction(input: unknown) {
 
 ## 4. Database Tables
 
-Pattern: `<module>_<entity>` with `org_id` and RLS.
+Pattern: `<module>_<entity>` with `tenant_id` and RLS.
 
 ```sql
 CREATE TABLE my_module_items (
   id UUID PRIMARY KEY,
-  org_id UUID NOT NULL REFERENCES organizations(id)
+  tenant_id UUID NOT NULL REFERENCES tenants(id)
 );
 
 ALTER TABLE my_module_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON my_module_items
-  USING (org_id = current_setting('app.current_org_id')::uuid);
+  USING (tenant_id IN (
+    SELECT tenant_id FROM tenant_members WHERE user_id = auth.uid()
+  ));
 ```
 
 ## 5. Register in Core
@@ -84,7 +86,7 @@ export const moduleRegistry = new Map([['my-module', manifest]]);
 ## Rules
 
 **Never:** Import from other modules, bypass Core services
-**Always:** Use brainHandle/recordUsage, filter by org_id
+**Always:** Use brainHandle/recordUsage, filter by tenant_id
 
 ## Usage Actions
 

@@ -7,9 +7,11 @@ import {
 } from '@appdistillery/core/ledger'
 import { redirect } from 'next/navigation'
 import { UsageSummaryCards } from './usage-summary'
-import { UsageChart } from './usage-chart'
 import { RecentActivity } from './recent-activity'
 import { PeriodSelector } from './period-selector'
+// Note: UsageChart is a Client Component - Next.js automatically code-splits it
+// The recharts bundle (~111KB) is lazy-loaded when UsageChart renders
+import { UsageChart } from './usage-chart'
 
 interface UsagePageProps {
   searchParams: Promise<{ period?: string }>

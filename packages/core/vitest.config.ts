@@ -9,9 +9,10 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/__tests__/**'],
+      // Note: Run `pnpm --filter @appdistillery/core test -- --coverage` to generate reports
     },
   },
   resolve: {

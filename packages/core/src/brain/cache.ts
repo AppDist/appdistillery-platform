@@ -4,7 +4,7 @@ import { createHash } from 'crypto';
 /**
  * Cache entry structure
  */
-interface CacheEntry<T> {
+export interface CacheEntry<T> {
   data: T;
   usage: {
     promptTokens: number;
@@ -17,11 +17,77 @@ interface CacheEntry<T> {
 }
 
 /**
- * In-memory cache store
+ * Cache store interface for abstracting storage implementation
  *
- * Simple Map-based cache. Can be upgraded to Redis for distributed caching.
+ * Implement this interface to provide custom cache backends (e.g., Redis).
+ *
+ * @example
+ * ```typescript
+ * // Redis implementation example (for future use)
+ * class RedisCacheStore implements CacheStore {
+ *   async get<T>(key: string): Promise<CacheEntry<T> | undefined> {
+ *     const data = await redisClient.get(key);
+ *     return data ? JSON.parse(data) : undefined;
+ *   }
+ *   // ... other methods
+ * }
+ * ```
  */
-const cache = new Map<string, CacheEntry<unknown>>();
+export interface CacheStore {
+  get<T>(key: string): CacheEntry<T> | undefined;
+  set<T>(key: string, entry: CacheEntry<T>): void;
+  delete(key: string): boolean;
+  clear(): void;
+  size(): number;
+  keys(): string[];
+  entries(): IterableIterator<[string, CacheEntry<unknown>]>;
+}
+
+/**
+ * In-memory cache store implementation
+ *
+ * Simple Map-based cache. Can be replaced with RedisCacheStore
+ * for distributed deployments.
+ */
+class InMemoryCacheStore implements CacheStore {
+  private cache = new Map<string, CacheEntry<unknown>>();
+
+  get<T>(key: string): CacheEntry<T> | undefined {
+    return this.cache.get(key) as CacheEntry<T> | undefined;
+  }
+
+  set<T>(key: string, entry: CacheEntry<T>): void {
+    this.cache.set(key, entry);
+  }
+
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
+
+  keys(): string[] {
+    return Array.from(this.cache.keys());
+  }
+
+  entries(): IterableIterator<[string, CacheEntry<unknown>]> {
+    return this.cache.entries();
+  }
+}
+
+/**
+ * Cache store instance
+ *
+ * To use a different cache backend, replace this with a different
+ * CacheStore implementation (e.g., RedisCacheStore).
+ */
+const cacheStore: CacheStore = new InMemoryCacheStore();
 
 /**
  * Default cache TTL (1 hour in milliseconds)
@@ -98,7 +164,7 @@ export function generateCacheKey<T extends z.ZodType>(
 export function getCachedResponse<T>(
   cacheKey: string
 ): { data: T; usage: CacheEntry<T>['usage']; fromCache: true } | null {
-  const entry = cache.get(cacheKey) as CacheEntry<T> | undefined;
+  const entry = cacheStore.get<T>(cacheKey);
 
   if (!entry) {
     return null;
@@ -106,7 +172,7 @@ export function getCachedResponse<T>(
 
   // Check expiration
   if (Date.now() > entry.expiresAt) {
-    cache.delete(cacheKey);
+    cacheStore.delete(cacheKey);
     return null;
   }
 
@@ -139,7 +205,7 @@ export function setCachedResponse<T>(
 ): void {
   const expiresAt = Date.now() + ttlMs;
 
-  cache.set(cacheKey, {
+  cacheStore.set(cacheKey, {
     data,
     usage,
     expiresAt,
@@ -153,14 +219,14 @@ export function setCachedResponse<T>(
  * @returns True if entry existed
  */
 export function clearCacheEntry(cacheKey: string): boolean {
-  return cache.delete(cacheKey);
+  return cacheStore.delete(cacheKey);
 }
 
 /**
  * Clear all cache entries
  */
 export function clearCache(): void {
-  cache.clear();
+  cacheStore.clear();
 }
 
 /**
@@ -173,8 +239,8 @@ export function getCacheStats(): {
   keys: string[];
 } {
   return {
-    size: cache.size,
-    keys: Array.from(cache.keys()),
+    size: cacheStore.size(),
+    keys: cacheStore.keys(),
   };
 }
 
@@ -187,9 +253,9 @@ export function cleanupExpiredEntries(): number {
   const now = Date.now();
   let cleaned = 0;
 
-  for (const [key, entry] of cache.entries()) {
+  for (const [key, entry] of cacheStore.entries()) {
     if (now > entry.expiresAt) {
-      cache.delete(key);
+      cacheStore.delete(key);
       cleaned++;
     }
   }

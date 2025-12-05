@@ -16,6 +16,8 @@
  * ```
  */
 
+import { logger } from '../utils/logger';
+
 /**
  * Configuration options for prompt validation
  */
@@ -229,7 +231,7 @@ export function validatePrompt(
         `Potential prompt injection detected. Patterns matched: ${injectionCheck.patterns.length}`
       );
       // Log patterns for debugging (don't expose to user)
-      console.warn('[PromptSanitizer] Injection patterns matched:', {
+      logger.warn('PromptSanitizer', 'Injection patterns matched', {
         patterns: injectionCheck.patterns,
         promptPreview: sanitized.slice(0, 100),
       });
